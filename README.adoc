@@ -1,0 +1,2 @@
+= Hawkular Datasource for Grafana
+:source-language: javascript
