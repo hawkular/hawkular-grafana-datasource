@@ -22,6 +22,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
+    this.tenant = instanceSettings.jsonData.tenant;
     this.q = $q;
     this.backendSrv = backendSrv;
   }
@@ -42,7 +43,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
         url: this.url + '/query',
         data: query,
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
       });
     }
 
@@ -53,7 +54,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
     key: 'testDatasource',
     value: function testDatasource() {
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/',
+        url: this.url + '/status',
         method: 'GET'
       }).then(function (response) {
         if (response.status === 200) {

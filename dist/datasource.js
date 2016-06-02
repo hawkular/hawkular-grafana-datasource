@@ -41,6 +41,7 @@ System.register(['lodash'], function (_export, _context) {
           this.type = instanceSettings.type;
           this.url = instanceSettings.url;
           this.name = instanceSettings.name;
+          this.tenant = instanceSettings.jsonData.tenant;
           this.q = $q;
           this.backendSrv = backendSrv;
         }
@@ -61,14 +62,14 @@ System.register(['lodash'], function (_export, _context) {
               url: this.url + '/query',
               data: query,
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
+              headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
             });
           }
         }, {
           key: 'testDatasource',
           value: function testDatasource() {
             return this.backendSrv.datasourceRequest({
-              url: this.url + '/',
+              url: this.url + '/status',
               method: 'GET'
             }).then(function (response) {
               if (response.status === 200) {

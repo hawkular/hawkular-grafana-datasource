@@ -6,6 +6,7 @@ export class GenericDatasource {
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
+    this.tenant = instanceSettings.jsonData.tenant;
     this.q = $q;
     this.backendSrv = backendSrv;
   }
@@ -22,7 +23,7 @@ export class GenericDatasource {
       url: this.url + '/query',
       data: query,
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
     });
   }
 
@@ -30,7 +31,7 @@ export class GenericDatasource {
   // Used for testing datasource in datasource configuration pange
   testDatasource() {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/',
+      url: this.url + '/status',
       method: 'GET'
     }).then(response => {
       if (response.status === 200) {
