@@ -8,7 +8,15 @@ export class GenericDatasourceQueryCtrl extends QueryCtrl {
 
     this.scope = $scope;
     this.uiSegmentSrv = uiSegmentSrv;
+
+    this.metricTypes = [
+      {value: 'gauge', text: 'Gauge'},
+      {value: 'counter', text: 'Counter'}
+    ];
+
+    this.target.type = this.target.type || 'gauge';
     this.target.target = this.target.target || 'select metric';
+    this.target.rate = this.target.rate === true;
   }
 
   getOptions() {

@@ -68,7 +68,12 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
 
           _this.scope = $scope;
           _this.uiSegmentSrv = uiSegmentSrv;
+
+          _this.metricTypes = [{value: 'gauge', text: 'Gauge'}, {value: 'counter', text: 'Counter'}];
+
+          _this.target.type = _this.target.type || 'gauge';
           _this.target.target = _this.target.target || 'select metric';
+          _this.target.rate = _this.target.rate === true;
           return _this;
         }
 

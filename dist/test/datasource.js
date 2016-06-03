@@ -27,12 +27,11 @@ var GenericDatasource = exports.GenericDatasource = function () {
     this.backendSrv = backendSrv;
   }
 
-  // Called once per panel (graph)
-
-
   _createClass(GenericDatasource, [{
     key: 'query',
     value: function query(options) {
+      console.log('query');
+      console.log(options);
       var query = this.buildQueryParameters(options);
 
       if (query.targets.length <= 0) {
@@ -46,10 +45,6 @@ var GenericDatasource = exports.GenericDatasource = function () {
         headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
       });
     }
-
-    // Required
-    // Used for testing datasource in datasource configuration pange
-
   }, {
     key: 'testDatasource',
     value: function testDatasource() {
@@ -73,25 +68,18 @@ var GenericDatasource = exports.GenericDatasource = function () {
         return result.data;
       });
     }
-
-    // Optional
-    // Required for templating
-
   }, {
     key: 'metricFindQuery',
     value: function metricFindQuery(options) {
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/search',
-        data: options,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }).then(this.mapToTextValue);
-    }
-  }, {
-    key: 'mapToTextValue',
-    value: function mapToTextValue(result) {
-      return _lodash2.default.map(result.data, function (d, i) {
-        return { text: d, value: i };
+        url: this.url + '/metrics',
+        params: {type: options.type},
+        method: 'GET',
+        headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant}
+      }).then(function (result) {
+        return _lodash2.default.map(result.data, function (metric) {
+          return {text: metric.id, value: metric.id};
+        });
       });
     }
   }, {

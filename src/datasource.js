@@ -11,7 +11,6 @@ export class GenericDatasource {
     this.backendSrv = backendSrv;
   }
 
-  // Called once per panel (graph)
   query(options) {
     var query = this.buildQueryParameters(options);
 
@@ -27,8 +26,6 @@ export class GenericDatasource {
     });
   }
 
-  // Required
-  // Used for testing datasource in datasource configuration pange
   testDatasource() {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/status',
@@ -50,20 +47,16 @@ export class GenericDatasource {
     });
   }
 
-  // Optional
-  // Required for templating
   metricFindQuery(options) {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/search',
-      data: options,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    }).then(this.mapToTextValue);
-  }
-
-  mapToTextValue(result) {
-    return _.map(result.data, (d, i) => {
-      return { text: d, value: i};
+      url: this.url + '/metrics',
+      params: {type: options.type},
+      method: 'GET',
+      headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant}
+    }).then(result => {
+      return _.map(result.data, metric => {
+        return {text: metric.id, value: metric.id};
+      });
     });
   }
 
