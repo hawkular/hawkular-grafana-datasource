@@ -30,19 +30,45 @@ var GenericDatasource = exports.GenericDatasource = function () {
   _createClass(GenericDatasource, [{
     key: 'query',
     value: function query(options) {
-      console.log('query');
-      console.log(options);
-      var query = this.buildQueryParameters(options);
+      var _this = this;
 
-      if (query.targets.length <= 0) {
-        return this.q.when([]);
+      var promises = _lodash2.default.chain(options.targets).filter(function (target) {
+        return !target.hide;
+      }).filter(function (target) {
+        return target.target !== 'select metric';
+      }).map(function (target) {
+
+        var uri = [];
+        uri.push(target.type + 's'); // gauges or counter
+        uri.push(target.target); // metric name
+        uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
+
+        var url = _this.url + '/' + uri.join('/');
+
+        return _this.backendSrv.datasourceRequest({
+          url: url,
+          params: { start: options.range.from.valueOf(), end: options.range.to.valueOf() },
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': _this.tenant }
+
+        });
+      }).value();
+
+      if (promises.length <= 0) {
+        return this.q.when({ data: [] });
       }
 
-      return this.backendSrv.datasourceRequest({
-        url: this.url + '/query',
-        data: query,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
+      return this.q.all(promises).then(function (responses) {
+        var result = _lodash2.default.map(responses, function (response, index) {
+          var datapoints = _lodash2.default.map(response.data, function (point) {
+            return [point.value, point.timestamp];
+          });
+          return {
+            target: options.targets[index].target,
+            datapoints: datapoints
+          };
+        });
+        return { data: result };
       });
     }
   }, {
@@ -73,24 +99,14 @@ var GenericDatasource = exports.GenericDatasource = function () {
     value: function metricFindQuery(options) {
       return this.backendSrv.datasourceRequest({
         url: this.url + '/metrics',
-        params: {type: options.type},
+        params: { type: options.type },
         method: 'GET',
-        headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant}
+        headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
       }).then(function (result) {
         return _lodash2.default.map(result.data, function (metric) {
-          return {text: metric.id, value: metric.id};
+          return { text: metric.id, value: metric.id };
         });
       });
-    }
-  }, {
-    key: 'buildQueryParameters',
-    value: function buildQueryParameters(options) {
-      //remove placeholder targets
-      options.targets = _lodash2.default.filter(options.targets, function (target) {
-        return target.target !== 'select metric';
-      });
-
-      return options;
     }
   }]);
 

@@ -49,19 +49,45 @@ System.register(['lodash'], function (_export, _context) {
         _createClass(GenericDatasource, [{
           key: 'query',
           value: function query(options) {
-            console.log('query');
-            console.log(options);
-            var query = this.buildQueryParameters(options);
+            var _this = this;
 
-            if (query.targets.length <= 0) {
-              return this.q.when([]);
+            var promises = _.chain(options.targets).filter(function (target) {
+              return !target.hide;
+            }).filter(function (target) {
+              return target.target !== 'select metric';
+            }).map(function (target) {
+
+              var uri = [];
+              uri.push(target.type + 's'); // gauges or counter
+              uri.push(target.target); // metric name
+              uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
+
+              var url = _this.url + '/' + uri.join('/');
+
+              return _this.backendSrv.datasourceRequest({
+                url: url,
+                params: { start: options.range.from.valueOf(), end: options.range.to.valueOf() },
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': _this.tenant }
+
+              });
+            }).value();
+
+            if (promises.length <= 0) {
+              return this.q.when({ data: [] });
             }
 
-            return this.backendSrv.datasourceRequest({
-              url: this.url + '/query',
-              data: query,
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
+            return this.q.all(promises).then(function (responses) {
+              var result = _.map(responses, function (response, index) {
+                var datapoints = _.map(response.data, function (point) {
+                  return [point.value, point.timestamp];
+                });
+                return {
+                  target: options.targets[index].target,
+                  datapoints: datapoints
+                };
+              });
+              return { data: result };
             });
           }
         }, {
@@ -92,24 +118,14 @@ System.register(['lodash'], function (_export, _context) {
           value: function metricFindQuery(options) {
             return this.backendSrv.datasourceRequest({
               url: this.url + '/metrics',
-              params: {type: options.type},
+              params: { type: options.type },
               method: 'GET',
-              headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant}
+              headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
             }).then(function (result) {
               return _.map(result.data, function (metric) {
-                return {text: metric.id, value: metric.id};
+                return { text: metric.id, value: metric.id };
               });
             });
-          }
-        }, {
-          key: 'buildQueryParameters',
-          value: function buildQueryParameters(options) {
-            //remove placeholder targets
-            options.targets = _.filter(options.targets, function (target) {
-              return target.target !== 'select metric';
-            });
-
-            return options;
           }
         }]);
 

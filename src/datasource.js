@@ -12,17 +12,41 @@ export class GenericDatasource {
   }
 
   query(options) {
-    var query = this.buildQueryParameters(options);
+    var promises = _.chain(options.targets)
+      .filter(target => !target.hide)
+      .filter(target => target.target !== 'select metric')
+      .map(target => {
 
-    if (query.targets.length <= 0) {
-      return this.q.when([]);
+        var uri = [];
+        uri.push(target.type + 's'); // gauges or counter
+        uri.push(target.target); // metric name
+        uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
+
+        var url = this.url + '/' + uri.join('/');
+
+        return this.backendSrv.datasourceRequest({
+          url: url,
+          params: {start: options.range.from.valueOf(), end: options.range.to.valueOf()},
+          method: 'GET',
+          headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant}
+
+        });
+      })
+      .value();
+
+    if (promises.length <= 0) {
+      return this.q.when({data: []});
     }
 
-    return this.backendSrv.datasourceRequest({
-      url: this.url + '/query',
-      data: query,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
+    return this.q.all(promises).then(responses => {
+      var result = _.map(responses, (response, index) => {
+        var datapoints = _.map(response.data, point => [point.value, point.timestamp]);
+        return {
+          target: options.targets[index].target,
+          datapoints: datapoints
+        };
+      });
+      return {data: result};
     });
   }
 
@@ -58,14 +82,5 @@ export class GenericDatasource {
         return {text: metric.id, value: metric.id};
       });
     });
-  }
-
-  buildQueryParameters(options) {
-    //remove placeholder targets
-    options.targets = _.filter(options.targets, target => {
-      return target.target !== 'select metric';
-    });
-
-    return options;
   }
 }
