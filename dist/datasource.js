@@ -59,7 +59,7 @@ System.register(['lodash'], function (_export, _context) {
 
               var uri = [];
               uri.push(target.type + 's'); // gauges or counter
-              uri.push(target.target); // metric name
+              uri.push(encodeURIComponent(target.target).replace('+', '%20')); // metric name
               uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
 
               var url = _this.url + '/' + uri.join('/');
