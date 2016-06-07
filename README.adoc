@@ -15,7 +15,7 @@ Download the source code and copy the content of `dist` to `hawkular` inside Gra
 [source,bash]
 ----
 GRAFANA_PLUGINS=/var/lib/grafana/plugins
-wget https://github.com/tsegismont/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
+wget https://github.com/hawkular/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
 unzip hawkular-grafana-datasource-master.zip
 mkdir ${GRAFANA_PLUGINS}/hawkular
 cp -R hawkular-grafana-datasource-master/dist/* ${GRAFANA_PLUGINS}/hawkular

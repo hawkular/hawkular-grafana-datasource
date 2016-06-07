@@ -3,7 +3,7 @@
 
 This project is the Hawkular Datasource plugin for Grafana 3. It works with:
 
-* Metrics standalone servers
+* Metrics standalone servers as well
 * Hawkular servers, starting from version Alpha13
 
 == Installing
@@ -15,7 +15,7 @@ Download the source code and copy the content of `dist` to `hawkular` inside Gra
 [source,bash]
 ----
 GRAFANA_PLUGINS=/var/lib/grafana/plugins
-wget https://github.com/tsegismont/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
+wget https://github.com/hawkular/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
 unzip hawkular-grafana-datasource-master.zip
 mkdir ${GRAFANA_PLUGINS}/hawkular
 cp -R hawkular-grafana-datasource-master/dist/* ${GRAFANA_PLUGINS}/hawkular
@@ -29,10 +29,10 @@ COMING SOON
 
 The datasource URL must point to the Hawkular Metrics service, e.g. `http://myhost:8080/hawkular/metrics`
 
-`direct` access mode only works with standalone Metrics servers currently. If you activate it, make sure to allow
+`direct` access mode only works with standalone Metrics servers currently. If you active it, make sure to allow
 the Grafana server origin in Metrics' configuration.
 
-Authentication must be set when working with a Hawkular server. Check the `Basic Auth` box and fill the user and password fields.
+Authentication must be set when working with a Hawkular server. Check the 'Basic Auth' box and fill the user and password fields.
 
 Eventually, select the tenant. On Hawkular servers, use `hawkular`.
 
