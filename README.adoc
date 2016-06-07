@@ -1,2 +1,48 @@
 = Hawkular Datasource for Grafana
 :source-language: javascript
+
+This project is the Hawkular Datasource plugin for Grafana 3. It works with:
+
+* Metrics standalone servers as well
+* Hawkular servers, starting from version Alpha13
+
+== Installing
+
+=== From source
+
+Download the source code and copy the content of `dist` to `hawkular` inside Grafana's plugin directory.
+
+[source,bash]
+----
+GRAFANA_PLUGINS=/var/lib/grafana/plugins
+wget https://github.com/tsegismont/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
+unzip hawkular-grafana-datasource-master.zip
+mkdir ${GRAFANA_PLUGINS}/hawkular
+cp -R hawkular-grafana-datasource-master/dist/* ${GRAFANA_PLUGINS}/hawkular
+----
+
+=== From the Grafana plugin directory
+
+COMING SOON
+
+== Configuration
+
+The datasource URL must point to the Hawkular Metrics service, e.g. `http://myhost:8080/hawkular/metrics`
+
+`direct` access mode only works with standalone Metrics servers currently. If you active it, make sure to allow
+the Grafana server origin in Metrics' configuration.
+
+Authentication must be set when working with a Hawkular server. Check the 'Basic Auth' box and fill the user and password fields.
+
+Eventually, select the tenant. On Hawkular servers, use `hawkular`.
+
+== Building
+
+You need `npm` and `grunt` to build the project.
+
+== Known issues
+
+=== Error when selecting a metric collected by the Hawkular Agent
+
+When working with a Hawkular server, it is currently not possible to display metrics collected by the Hawkular agent.
+This is due to the presence of slashes in metric names.
