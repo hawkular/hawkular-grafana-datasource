@@ -9,7 +9,7 @@ export class GenericDatasource {
     this.tenant = instanceSettings.jsonData.tenant;
     this.q = $q;
     this.backendSrv = backendSrv;
-    this.bearer = instanceSettings.jsonData.token
+    this.token = instanceSettings.jsonData.token
   }
 
   query(options) {
