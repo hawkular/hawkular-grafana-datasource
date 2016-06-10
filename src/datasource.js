@@ -9,6 +9,7 @@ export class GenericDatasource {
     this.tenant = instanceSettings.jsonData.tenant;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.bearer = instanceSettings.jsonData.token
   }
 
   query(options) {
@@ -28,7 +29,7 @@ export class GenericDatasource {
           url: url,
           params: {start: options.range.from.valueOf(), end: options.range.to.valueOf()},
           method: 'GET',
-          headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant}
+          headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant, 'Authorization': 'Bearer ' + this.token}
 
         });
       })
@@ -76,7 +77,7 @@ export class GenericDatasource {
       url: this.url + '/metrics',
       params: {type: options.type},
       method: 'GET',
-      headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant}
+      headers: {'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant, 'Authorization': 'Bearer ' + this.token}
     }).then(result => {
       return _.map(result.data, metric => {
         return {text: metric.id, value: metric.id};
