@@ -34,7 +34,9 @@ the Grafana server origin in Metrics' configuration.
 
 Authentication must be set when working with a Hawkular server. Check the 'Basic Auth' box and fill the user and password fields.
 
-Eventually, select the tenant. On Hawkular servers, use `hawkular`.
+Select the tenant. On Hawkular servers, use `hawkular`.
+
+Openshift-Metrics users must provide an authentication token.
 
 == Building
 

@@ -23,6 +23,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
     this.tenant = instanceSettings.jsonData.tenant;
+    this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
   }
@@ -49,7 +50,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
           url: url,
           params: { start: options.range.from.valueOf(), end: options.range.to.valueOf() },
           method: 'GET',
-          headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': _this.tenant }
+          headers: _this.createHeaders()
 
         });
       }).value();
@@ -70,6 +71,18 @@ var GenericDatasource = exports.GenericDatasource = function () {
         });
         return { data: result };
       });
+    }
+  }, {
+    key: 'createHeaders',
+    value: function createHeaders() {
+      var headers = {
+        'Content-Type': 'application/json',
+        'Hawkular-Tenant': this.tenant
+      };
+      if (typeof this.token === 'string' && this.token.length > 0) {
+        headers.Authorization = 'Bearer ' + this.token;
+      }
+      return headers;
     }
   }, {
     key: 'testDatasource',
@@ -101,7 +114,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
         url: this.url + '/metrics',
         params: { type: options.type },
         method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
+        headers: this.createHeaders()
       }).then(function (result) {
         return _lodash2.default.map(result.data, function (metric) {
           return { text: metric.id, value: metric.id };

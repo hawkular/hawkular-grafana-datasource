@@ -42,6 +42,7 @@ System.register(['lodash'], function (_export, _context) {
           this.url = instanceSettings.url;
           this.name = instanceSettings.name;
           this.tenant = instanceSettings.jsonData.tenant;
+          this.token = instanceSettings.jsonData.token;
           this.q = $q;
           this.backendSrv = backendSrv;
         }
@@ -68,7 +69,7 @@ System.register(['lodash'], function (_export, _context) {
                 url: url,
                 params: { start: options.range.from.valueOf(), end: options.range.to.valueOf() },
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': _this.tenant }
+                headers: _this.createHeaders()
 
               });
             }).value();
@@ -89,6 +90,18 @@ System.register(['lodash'], function (_export, _context) {
               });
               return { data: result };
             });
+          }
+        }, {
+          key: 'createHeaders',
+          value: function createHeaders() {
+            var headers = {
+              'Content-Type': 'application/json',
+              'Hawkular-Tenant': this.tenant
+            };
+            if (typeof this.token === 'string' && this.token.length > 0) {
+              headers.Authorization = 'Bearer ' + this.token;
+            }
+            return headers;
           }
         }, {
           key: 'testDatasource',
@@ -120,7 +133,7 @@ System.register(['lodash'], function (_export, _context) {
               url: this.url + '/metrics',
               params: { type: options.type },
               method: 'GET',
-              headers: { 'Content-Type': 'application/json', 'Hawkular-Tenant': this.tenant }
+              headers: this.createHeaders()
             }).then(function (result) {
               return _.map(result.data, function (metric) {
                 return { text: metric.id, value: metric.id };
