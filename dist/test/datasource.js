@@ -40,18 +40,27 @@ var GenericDatasource = exports.GenericDatasource = function () {
       }).map(function (target) {
 
         var uri = [];
-        uri.push(target.type + 's'); // gauges or counter
-        uri.push(encodeURIComponent(target.target).replace('+', '%20')); // metric name
+        uri.push(target.type + 's'); // gauges or counters
         uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
+        uri.push('query');
 
         var url = _this.url + '/' + uri.join('/');
 
         return _this.backendSrv.datasourceRequest({
           url: url,
-          params: { start: options.range.from.valueOf(), end: options.range.to.valueOf() },
-          method: 'GET',
+          data: {
+            ids: [target.target],
+            start: options.range.from.valueOf(),
+            end: options.range.to.valueOf()
+          },
+          method: 'POST',
           headers: _this.createHeaders()
-
+        }).then(function (response) {
+          return {
+            refId: target.refId,
+            target: target.target,
+            response: response
+          };
         });
       }).value();
 
@@ -59,13 +68,20 @@ var GenericDatasource = exports.GenericDatasource = function () {
         return this.q.when({ data: [] });
       }
 
-      return this.q.all(promises).then(function (responses) {
-        var result = _lodash2.default.map(responses, function (response, index) {
-          var datapoints = _lodash2.default.map(response.data, function (point) {
-            return [point.value, point.timestamp];
-          });
+      return this.q.all(promises).then(function (richResponses) {
+        var result = _lodash2.default.map(richResponses, function (richResponse) {
+          var response = richResponse.response;
+          var datapoints;
+          if (response.data.length != 0) {
+            datapoints = _lodash2.default.map(response.data[0].data, function (point) {
+              return [point.value, point.timestamp];
+            });
+          } else {
+            datapoints = [];
+          }
           return {
-            target: options.targets[index].target,
+            refId: richResponse.refId,
+            target: richResponse.target,
             datapoints: datapoints
           };
         });

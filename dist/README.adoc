@@ -14,6 +14,7 @@ Download the source code and copy the content of `dist` to `hawkular` inside Gra
 
 [source,bash]
 ----
+# This is the default for Linux Grafana installs. Change it to match yours, if needed.
 GRAFANA_PLUGINS=/var/lib/grafana/plugins
 wget https://github.com/hawkular/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
 unzip hawkular-grafana-datasource-master.zip
@@ -41,10 +42,3 @@ Openshift-Metrics users must provide an authentication token.
 == Building
 
 You need `npm` and `grunt` to build the project.
-
-== Known issues
-
-=== Error when selecting a metric collected by the Hawkular Agent
-
-When working with a Hawkular server, it is currently not possible to display metrics collected by the Hawkular agent.
-This is due to the presence of slashes in metric names.

@@ -1,5 +1,5 @@
-import {Datasource} from '../module';
-import Q from 'q';
+import {Datasource} from "../module";
+import Q from "q";
 
 describe('GenericDatasource', function () {
   var ctx = {};
@@ -46,9 +46,8 @@ describe('GenericDatasource', function () {
 
     ctx.backendSrv.datasourceRequest = function (request) {
 
-      expect(request.method).to.equal('GET');
+      expect(request.method).to.equal('POST');
       expect(request.headers).to.have.property('Hawkular-Tenant', instanceSettings.jsonData.tenant);
-      expect(request.params).to.deep.equal({start: options.range.from, end: options.range.to});
 
       var parser = document.createElement('a');
       parser.href = request.url;
@@ -64,21 +63,31 @@ describe('GenericDatasource', function () {
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements[2]).to.be.oneOf(['gauges', 'counters']);
       if (pathElements[2] == 'gauges') {
-        expect(pathElements.slice(3)).to.deep.equal(['memory', 'raw']);
+        expect(pathElements.slice(3)).to.deep.equal(['raw', 'query']);
+        expect(request.data).to.deep.equal({
+          start: options.range.from,
+          end: options.range.to,
+          ids: ['memory']
+        });
       } else {
-        expect(pathElements.slice(3)).to.deep.equal(['packets', 'rate']);
+        expect(pathElements.slice(3)).to.deep.equal(['rate', 'query']);
+        expect(request.data).to.deep.equal({
+          start: options.range.from,
+          end: options.range.to,
+          ids: ['packets']
+        });
       }
 
       return ctx.$q.when({
-        data: [
-          {
+        data: [{
+          data: [{
             timestamp: 13,
             value: 15
           }, {
             timestamp: 19,
             value: 21
-          }
-        ]
+          }]
+        }]
       });
     };
 
