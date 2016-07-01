@@ -19,18 +19,27 @@ export class GenericDatasource {
       .map(target => {
 
         var uri = [];
-        uri.push(target.type + 's'); // gauges or counter
-        uri.push(encodeURIComponent(target.target).replace('+', '%20')); // metric name
+        uri.push(target.type + 's'); // gauges or counters
         uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
+        uri.push('query');
 
         var url = this.url + '/' + uri.join('/');
 
         return this.backendSrv.datasourceRequest({
           url: url,
-          params: {start: options.range.from.valueOf(), end: options.range.to.valueOf()},
-          method: 'GET',
+          data: {
+            ids: [target.target],
+            start: options.range.from.valueOf(),
+            end: options.range.to.valueOf()
+          },
+          method: 'POST',
           headers: this.createHeaders()
-
+        }).then(response => {
+          return {
+            refId: target.refId,
+            target: target.target,
+            response: response
+          };
         });
       })
       .value();
@@ -39,11 +48,18 @@ export class GenericDatasource {
       return this.q.when({data: []});
     }
 
-    return this.q.all(promises).then(responses => {
-      var result = _.map(responses, (response, index) => {
-        var datapoints = _.map(response.data, point => [point.value, point.timestamp]);
+    return this.q.all(promises).then(richResponses => {
+      var result = _.map(richResponses, (richResponse) => {
+        var response = richResponse.response;
+        var datapoints;
+        if (response.data.length != 0) {
+          datapoints = _.map(response.data[0].data, point => [point.value, point.timestamp]);
+        } else {
+          datapoints = [];
+        }
         return {
-          target: options.targets[index].target,
+          refId: richResponse.refId,
+          target: richResponse.target,
           datapoints: datapoints
         };
       });
