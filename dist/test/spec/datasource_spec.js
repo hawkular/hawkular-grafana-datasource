@@ -8,7 +8,7 @@ var _q2 = _interopRequireDefault(_q);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-describe('GenericDatasource', function () {
+describe('HawkularDatasource', function () {
   var ctx = {};
   var hProtocol = 'https';
   var hHostname = 'test.com';
@@ -20,11 +20,16 @@ describe('GenericDatasource', function () {
       tenant: 'test-tenant'
     }
   };
+  ctx.templateSrv = {
+    replace: function replace(target, vars) {
+      return target;
+    }
+  };
 
   beforeEach(function () {
     ctx.$q = _q2.default;
     ctx.backendSrv = {};
-    ctx.ds = new _module.Datasource(instanceSettings, ctx.$q, ctx.backendSrv);
+    ctx.ds = new _module.Datasource(instanceSettings, ctx.$q, ctx.backendSrv, ctx.templateSrv);
   });
 
   it('should return an empty array when no targets are set', function (done) {

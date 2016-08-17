@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.GenericDatasource = undefined;
+exports.HawkularDatasource = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -15,9 +15,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var GenericDatasource = exports.GenericDatasource = function () {
-  function GenericDatasource(instanceSettings, $q, backendSrv) {
-    _classCallCheck(this, GenericDatasource);
+var HawkularDatasource = exports.HawkularDatasource = function () {
+  function HawkularDatasource(instanceSettings, $q, backendSrv, templateSrv) {
+    _classCallCheck(this, HawkularDatasource);
 
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
@@ -26,9 +26,10 @@ var GenericDatasource = exports.GenericDatasource = function () {
     this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.templateSrv = templateSrv;
   }
 
-  _createClass(GenericDatasource, [{
+  _createClass(HawkularDatasource, [{
     key: 'query',
     value: function query(options) {
       var _this = this;
@@ -40,6 +41,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
       }).map(function (target) {
 
         var uri = [];
+        var metricIds = _this.resolveVariables(target.target);
         uri.push(target.type + 's'); // gauges or counters
         uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
         uri.push('query');
@@ -49,7 +51,7 @@ var GenericDatasource = exports.GenericDatasource = function () {
         return _this.backendSrv.datasourceRequest({
           url: url,
           data: {
-            ids: [target.target],
+            ids: metricIds,
             start: options.range.from.valueOf(),
             end: options.range.to.valueOf()
           },
@@ -70,19 +72,15 @@ var GenericDatasource = exports.GenericDatasource = function () {
 
       return this.q.all(promises).then(function (richResponses) {
         var result = _lodash2.default.map(richResponses, function (richResponse) {
-          var response = richResponse.response;
-          var datapoints;
-          if (response.data.length != 0) {
-            datapoints = _lodash2.default.map(response.data[0].data, function (point) {
-              return [point.value, point.timestamp];
-            });
-          } else {
-            datapoints = [];
-          }
           return {
             refId: richResponse.refId,
             target: richResponse.target,
-            datapoints: datapoints
+            // The javascript's flatMap
+            datapoints: [].concat.apply([], richResponse.response.data.map(function (d) {
+              return d.data;
+            })).map(function (point) {
+              return [point.value, point.timestamp];
+            })
           };
         });
         return { data: result };
@@ -137,8 +135,18 @@ var GenericDatasource = exports.GenericDatasource = function () {
         });
       });
     }
+  }, {
+    key: 'resolveVariables',
+    value: function resolveVariables(target) {
+      var result = this.templateSrv.replace(target, this.templateSrv.variables);
+      // result might be in like "{id1,id2,id3}" (as string)
+      if (result.startsWith('{')) {
+        return result.substring(1, result.length - 1).split(',');
+      }
+      return [result];
+    }
   }]);
 
-  return GenericDatasource;
+  return HawkularDatasource;
 }();
 //# sourceMappingURL=datasource.js.map

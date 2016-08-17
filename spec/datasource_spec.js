@@ -1,7 +1,7 @@
 import {Datasource} from "../module";
 import Q from "q";
 
-describe('GenericDatasource', function () {
+describe('HawkularDatasource', function () {
   var ctx = {};
   var hProtocol = 'https';
   var hHostname = 'test.com';
@@ -13,11 +13,16 @@ describe('GenericDatasource', function () {
       tenant: 'test-tenant'
     }
   };
+  ctx.templateSrv = {
+      replace: function(target, vars) {
+          return target;
+      }
+  };
 
   beforeEach(function () {
     ctx.$q = Q;
     ctx.backendSrv = {};
-    ctx.ds = new Datasource(instanceSettings, ctx.$q, ctx.backendSrv);
+    ctx.ds = new Datasource(instanceSettings, ctx.$q, ctx.backendSrv, ctx.templateSrv);
   });
 
   it('should return an empty array when no targets are set', function (done) {
@@ -93,10 +98,10 @@ describe('GenericDatasource', function () {
 
     ctx.ds.query(options).then(function (result) {
 
-      expect(result.data).to.have.length(2);
-      expect(result.data.map(t => t.target)).to.include.members(['memory', 'packets']);
-      expect(result.data[0].datapoints).to.deep.equal([[15, 13], [21, 19]]);
-      expect(result.data[1].datapoints).to.deep.equal([[15, 13], [21, 19]]);
+     expect(result.data).to.have.length(2);
+     expect(result.data.map(t => t.target)).to.include.members(['memory', 'packets']);
+     expect(result.data[0].datapoints).to.deep.equal([[15, 13], [21, 19]]);
+     expect(result.data[1].datapoints).to.deep.equal([[15, 13], [21, 19]]);
 
     }).then(v => done(), err => done(err));
   });

@@ -3,7 +3,7 @@
 System.register(['./datasource', './query_ctrl'], function (_export, _context) {
   "use strict";
 
-  var GenericDatasource, GenericDatasourceQueryCtrl, GenericConfigCtrl, GenericQueryOptionsCtrl, GenericAnnotationsQueryCtrl;
+  var HawkularDatasource, HawkularDatasourceQueryCtrl, HawkularConfigCtrl, HawkularQueryOptionsCtrl, HawkularAnnotationsQueryCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -13,38 +13,38 @@ System.register(['./datasource', './query_ctrl'], function (_export, _context) {
 
   return {
     setters: [function (_datasource) {
-      GenericDatasource = _datasource.GenericDatasource;
+      HawkularDatasource = _datasource.HawkularDatasource;
     }, function (_query_ctrl) {
-      GenericDatasourceQueryCtrl = _query_ctrl.GenericDatasourceQueryCtrl;
+      HawkularDatasourceQueryCtrl = _query_ctrl.HawkularDatasourceQueryCtrl;
     }],
     execute: function () {
-      _export('ConfigCtrl', GenericConfigCtrl = function GenericConfigCtrl() {
-        _classCallCheck(this, GenericConfigCtrl);
+      _export('ConfigCtrl', HawkularConfigCtrl = function HawkularConfigCtrl() {
+        _classCallCheck(this, HawkularConfigCtrl);
       });
 
-      GenericConfigCtrl.templateUrl = 'partials/config.html';
+      HawkularConfigCtrl.templateUrl = 'partials/config.html';
 
-      _export('QueryOptionsCtrl', GenericQueryOptionsCtrl = function GenericQueryOptionsCtrl() {
-        _classCallCheck(this, GenericQueryOptionsCtrl);
+      _export('QueryOptionsCtrl', HawkularQueryOptionsCtrl = function HawkularQueryOptionsCtrl() {
+        _classCallCheck(this, HawkularQueryOptionsCtrl);
       });
 
-      GenericQueryOptionsCtrl.templateUrl = 'partials/query.options.html';
+      HawkularQueryOptionsCtrl.templateUrl = 'partials/query.options.html';
 
-      _export('AnnotationsQueryCtrl', GenericAnnotationsQueryCtrl = function GenericAnnotationsQueryCtrl() {
-        _classCallCheck(this, GenericAnnotationsQueryCtrl);
+      _export('AnnotationsQueryCtrl', HawkularAnnotationsQueryCtrl = function HawkularAnnotationsQueryCtrl() {
+        _classCallCheck(this, HawkularAnnotationsQueryCtrl);
       });
 
-      GenericAnnotationsQueryCtrl.templateUrl = 'partials/annotations.editor.html';
+      HawkularAnnotationsQueryCtrl.templateUrl = 'partials/annotations.editor.html';
 
-      _export('Datasource', GenericDatasource);
+      _export('Datasource', HawkularDatasource);
 
-      _export('QueryCtrl', GenericDatasourceQueryCtrl);
+      _export('QueryCtrl', HawkularDatasourceQueryCtrl);
 
-      _export('ConfigCtrl', GenericConfigCtrl);
+      _export('ConfigCtrl', HawkularConfigCtrl);
 
-      _export('QueryOptionsCtrl', GenericQueryOptionsCtrl);
+      _export('QueryOptionsCtrl', HawkularQueryOptionsCtrl);
 
-      _export('AnnotationsQueryCtrl', GenericAnnotationsQueryCtrl);
+      _export('AnnotationsQueryCtrl', HawkularAnnotationsQueryCtrl);
     }
   };
 });

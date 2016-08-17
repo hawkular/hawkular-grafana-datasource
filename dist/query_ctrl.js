@@ -3,7 +3,7 @@
 System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_export, _context) {
   "use strict";
 
-  var QueryCtrl, _createClass, GenericDatasourceQueryCtrl;
+  var QueryCtrl, _createClass, HawkularDatasourceQueryCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -58,13 +58,13 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
         };
       }();
 
-      _export('GenericDatasourceQueryCtrl', GenericDatasourceQueryCtrl = function (_QueryCtrl) {
-        _inherits(GenericDatasourceQueryCtrl, _QueryCtrl);
+      _export('HawkularDatasourceQueryCtrl', HawkularDatasourceQueryCtrl = function (_QueryCtrl) {
+        _inherits(HawkularDatasourceQueryCtrl, _QueryCtrl);
 
-        function GenericDatasourceQueryCtrl($scope, $injector, uiSegmentSrv) {
-          _classCallCheck(this, GenericDatasourceQueryCtrl);
+        function HawkularDatasourceQueryCtrl($scope, $injector, uiSegmentSrv) {
+          _classCallCheck(this, HawkularDatasourceQueryCtrl);
 
-          var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(GenericDatasourceQueryCtrl).call(this, $scope, $injector));
+          var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(HawkularDatasourceQueryCtrl).call(this, $scope, $injector));
 
           _this.scope = $scope;
           _this.uiSegmentSrv = uiSegmentSrv;
@@ -77,7 +77,7 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
           return _this;
         }
 
-        _createClass(GenericDatasourceQueryCtrl, [{
+        _createClass(HawkularDatasourceQueryCtrl, [{
           key: 'getOptions',
           value: function getOptions() {
             return this.datasource.metricFindQuery(this.target).then(this.uiSegmentSrv.transformToSegments(false));
@@ -90,12 +90,12 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
           }
         }]);
 
-        return GenericDatasourceQueryCtrl;
+        return HawkularDatasourceQueryCtrl;
       }(QueryCtrl));
 
-      _export('GenericDatasourceQueryCtrl', GenericDatasourceQueryCtrl);
+      _export('HawkularDatasourceQueryCtrl', HawkularDatasourceQueryCtrl);
 
-      GenericDatasourceQueryCtrl.templateUrl = 'partials/query.editor.html';
+      HawkularDatasourceQueryCtrl.templateUrl = 'partials/query.editor.html';
     }
   };
 });

@@ -3,7 +3,7 @@
 System.register(['lodash'], function (_export, _context) {
   "use strict";
 
-  var _, _createClass, GenericDatasource;
+  var _, _createClass, HawkularDatasource;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -34,9 +34,9 @@ System.register(['lodash'], function (_export, _context) {
         };
       }();
 
-      _export('GenericDatasource', GenericDatasource = function () {
-        function GenericDatasource(instanceSettings, $q, backendSrv) {
-          _classCallCheck(this, GenericDatasource);
+      _export('HawkularDatasource', HawkularDatasource = function () {
+        function HawkularDatasource(instanceSettings, $q, backendSrv, templateSrv) {
+          _classCallCheck(this, HawkularDatasource);
 
           this.type = instanceSettings.type;
           this.url = instanceSettings.url;
@@ -45,9 +45,10 @@ System.register(['lodash'], function (_export, _context) {
           this.token = instanceSettings.jsonData.token;
           this.q = $q;
           this.backendSrv = backendSrv;
+          this.templateSrv = templateSrv;
         }
 
-        _createClass(GenericDatasource, [{
+        _createClass(HawkularDatasource, [{
           key: 'query',
           value: function query(options) {
             var _this = this;
@@ -59,6 +60,7 @@ System.register(['lodash'], function (_export, _context) {
             }).map(function (target) {
 
               var uri = [];
+              var metricIds = _this.resolveVariables(target.target);
               uri.push(target.type + 's'); // gauges or counters
               uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
               uri.push('query');
@@ -68,7 +70,7 @@ System.register(['lodash'], function (_export, _context) {
               return _this.backendSrv.datasourceRequest({
                 url: url,
                 data: {
-                  ids: [target.target],
+                  ids: metricIds,
                   start: options.range.from.valueOf(),
                   end: options.range.to.valueOf()
                 },
@@ -89,19 +91,15 @@ System.register(['lodash'], function (_export, _context) {
 
             return this.q.all(promises).then(function (richResponses) {
               var result = _.map(richResponses, function (richResponse) {
-                var response = richResponse.response;
-                var datapoints;
-                if (response.data.length != 0) {
-                  datapoints = _.map(response.data[0].data, function (point) {
-                    return [point.value, point.timestamp];
-                  });
-                } else {
-                  datapoints = [];
-                }
                 return {
                   refId: richResponse.refId,
                   target: richResponse.target,
-                  datapoints: datapoints
+                  // The javascript's flatMap
+                  datapoints: [].concat.apply([], richResponse.response.data.map(function (d) {
+                    return d.data;
+                  })).map(function (point) {
+                    return [point.value, point.timestamp];
+                  })
                 };
               });
               return { data: result };
@@ -156,12 +154,22 @@ System.register(['lodash'], function (_export, _context) {
               });
             });
           }
+        }, {
+          key: 'resolveVariables',
+          value: function resolveVariables(target) {
+            var result = this.templateSrv.replace(target, this.templateSrv.variables);
+            // result might be in like "{id1,id2,id3}" (as string)
+            if (result.startsWith('{')) {
+              return result.substring(1, result.length - 1).split(',');
+            }
+            return [result];
+          }
         }]);
 
-        return GenericDatasource;
+        return HawkularDatasource;
       }());
 
-      _export('GenericDatasource', GenericDatasource);
+      _export('HawkularDatasource', HawkularDatasource);
     }
   };
 });

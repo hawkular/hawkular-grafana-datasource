@@ -1,8 +1,8 @@
 import _ from "lodash";
 
-export class GenericDatasource {
+export class HawkularDatasource {
 
-  constructor(instanceSettings, $q, backendSrv) {
+  constructor(instanceSettings, $q, backendSrv, templateSrv) {
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
@@ -10,6 +10,7 @@ export class GenericDatasource {
     this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.templateSrv = templateSrv;
   }
 
   query(options) {
@@ -19,6 +20,7 @@ export class GenericDatasource {
       .map(target => {
 
         var uri = [];
+        var metricIds = this.resolveVariables(target.target);
         uri.push(target.type + 's'); // gauges or counters
         uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
         uri.push('query');
@@ -28,7 +30,7 @@ export class GenericDatasource {
         return this.backendSrv.datasourceRequest({
           url: url,
           data: {
-            ids: [target.target],
+            ids: metricIds,
             start: options.range.from.valueOf(),
             end: options.range.to.valueOf()
           },
@@ -50,17 +52,12 @@ export class GenericDatasource {
 
     return this.q.all(promises).then(richResponses => {
       var result = _.map(richResponses, (richResponse) => {
-        var response = richResponse.response;
-        var datapoints;
-        if (response.data.length != 0) {
-          datapoints = _.map(response.data[0].data, point => [point.value, point.timestamp]);
-        } else {
-          datapoints = [];
-        }
         return {
           refId: richResponse.refId,
           target: richResponse.target,
-          datapoints: datapoints
+          // The javascript's flatMap
+          datapoints: [].concat.apply([], richResponse.response.data.map(d => d.data))
+            .map(point => [point.value, point.timestamp])
         };
       });
       return {data: result};
@@ -110,5 +107,14 @@ export class GenericDatasource {
         return {text: metric.id, value: metric.id};
       });
     });
+  }
+
+  resolveVariables(target) {
+    var result = this.templateSrv.replace(target, this.templateSrv.variables);
+    // result might be in like "{id1,id2,id3}" (as string)
+    if (result.startsWith('{')) {
+        return result.substring(1, result.length-1).split(',');
+    }
+    return [result];
   }
 }
