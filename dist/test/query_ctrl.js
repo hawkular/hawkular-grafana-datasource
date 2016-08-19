@@ -30,9 +30,13 @@ var HawkularDatasourceQueryCtrl = exports.HawkularDatasourceQueryCtrl = function
 
     _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }];
 
+    _this.reduceFunctions = [{ value: 'none', text: 'None' }, { value: 'sum', text: 'Sum' }, { value: 'average', text: 'Average' }, { value: 'min', text: 'min' }, { value: 'max', text: 'max' }];
+
     _this.target.type = _this.target.type || 'gauge';
     _this.target.target = _this.target.target || 'select metric';
     _this.target.rate = _this.target.rate === true;
+    _this.target.reduce = _this.target.reduce || 'none';
+    console.log(_this);
     return _this;
   }
 

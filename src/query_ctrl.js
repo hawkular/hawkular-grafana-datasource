@@ -14,9 +14,18 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       {value: 'counter', text: 'Counter'}
     ];
 
+    this.reduceFunctions = [
+      {value: 'none', text: 'None'},
+      {value: 'sum', text: 'Sum'},
+      {value: 'average', text: 'Average'},
+      {value: 'min', text: 'min'},
+      {value: 'max', text: 'max'}
+    ];
+
     this.target.type = this.target.type || 'gauge';
     this.target.target = this.target.target || 'select metric';
     this.target.rate = this.target.rate === true;
+    this.target.reduce = this.target.reduce || 'none';
   }
 
   getOptions() {

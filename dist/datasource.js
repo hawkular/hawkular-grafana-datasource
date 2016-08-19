@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['lodash'], function (_export, _context) {
+System.register(['lodash', './aggregations'], function (_export, _context) {
   "use strict";
 
-  var _, _createClass, HawkularDatasource;
+  var _, Aggregations, _createClass, HawkularDatasource;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -14,6 +14,8 @@ System.register(['lodash'], function (_export, _context) {
   return {
     setters: [function (_lodash) {
       _ = _lodash.default;
+    }, function (_aggregations) {
+      Aggregations = _aggregations.Aggregations;
     }],
     execute: function () {
       _createClass = function () {
@@ -46,6 +48,7 @@ System.register(['lodash'], function (_export, _context) {
           this.q = $q;
           this.backendSrv = backendSrv;
           this.templateSrv = templateSrv;
+          this.aggregations = new Aggregations();
         }
 
         _createClass(HawkularDatasource, [{
@@ -53,56 +56,76 @@ System.register(['lodash'], function (_export, _context) {
           value: function query(options) {
             var _this = this;
 
-            var promises = _.chain(options.targets).filter(function (target) {
+            var validTargets = options.targets.filter(function (target) {
               return !target.hide;
             }).filter(function (target) {
               return target.target !== 'select metric';
-            }).map(function (target) {
+            });
 
-              var uri = [];
-              var metricIds = _this.resolveVariables(target.target);
-              uri.push(target.type + 's'); // gauges or counters
-              uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
-              uri.push('query');
-
-              var url = _this.url + '/' + uri.join('/');
-
-              return _this.backendSrv.datasourceRequest({
-                url: url,
-                data: {
-                  ids: metricIds,
-                  start: options.range.from.valueOf(),
-                  end: options.range.to.valueOf()
-                },
-                method: 'POST',
-                headers: _this.createHeaders()
-              }).then(function (response) {
-                return {
-                  refId: target.refId,
-                  target: target.target,
-                  response: response
-                };
-              });
-            }).value();
-
-            if (promises.length <= 0) {
+            if (validTargets.length === 0) {
               return this.q.when({ data: [] });
             }
 
-            return this.q.all(promises).then(function (richResponses) {
-              var result = _.map(richResponses, function (richResponse) {
-                return {
-                  refId: richResponse.refId,
-                  target: richResponse.target,
-                  // The javascript's flatMap
-                  datapoints: [].concat.apply([], richResponse.response.data.map(function (d) {
-                    return d.data;
-                  })).map(function (point) {
-                    return [point.value, point.timestamp];
-                  })
-                };
+            var promises = validTargets.map(function (target) {
+              return _this.queryOnTarget(target, options).then(function (response) {
+                return _this.processResponse(target, response);
               });
-              return { data: result };
+            });
+
+            return this.q.all(promises).then(function (responses) {
+              var flatten = [].concat.apply([], responses);
+              return { data: flatten };
+            });
+          }
+        }, {
+          key: 'queryOnTarget',
+          value: function queryOnTarget(target, options) {
+            var uri = [target.type + 's', // gauges or counters
+            target.rate ? 'rate' : 'raw', // raw or rate
+            'query'];
+            var url = this.url + '/' + uri.join('/');
+            var metricIds = this.resolveVariables(target.target, options.scopedVars || this.templateSrv.variables);
+
+            return this.backendSrv.datasourceRequest({
+              url: url,
+              data: {
+                ids: metricIds,
+                start: options.range.from.valueOf(),
+                end: options.range.to.valueOf()
+              },
+              method: 'POST',
+              headers: this.createHeaders()
+            }).then(function (response) {
+              return {
+                target: metricIds[0],
+                hawkularJson: response.status == 200 ? response.data : []
+              };
+            });
+          }
+        }, {
+          key: 'processResponse',
+          value: function processResponse(target, response) {
+            var hawkularJson;
+            if (target.reduce === 'sum') {
+              hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.sum);
+            } else if (target.reduce === 'average') {
+              hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.average);
+            } else if (target.reduce === 'min') {
+              hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.min);
+            } else if (target.reduce === 'max') {
+              hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.max);
+            } else {
+              hawkularJson = response.hawkularJson;
+            }
+            var multipleSeries = hawkularJson.length > 1;
+            return hawkularJson.map(function (timeSerie) {
+              return {
+                refId: target.refId,
+                target: multipleSeries ? timeSerie.id : response.target,
+                datapoints: timeSerie.data.map(function (point) {
+                  return [point.value, point.timestamp];
+                })
+              };
             });
           }
         }, {
@@ -156,13 +179,34 @@ System.register(['lodash'], function (_export, _context) {
           }
         }, {
           key: 'resolveVariables',
-          value: function resolveVariables(target) {
-            var result = this.templateSrv.replace(target, this.templateSrv.variables);
-            // result might be in like "{id1,id2,id3}" (as string)
-            if (result.startsWith('{')) {
-              return result.substring(1, result.length - 1).split(',');
+          value: function resolveVariables(target, scopedVars) {
+            var _this2 = this;
+
+            var variables = target.match(/\$\w+/g);
+            var resolved = [target];
+            if (variables) {
+              variables.forEach(function (v) {
+                var values = _this2.getVarValues(v, scopedVars);
+                var newResolved = [];
+                values.forEach(function (val) {
+                  resolved.forEach(function (target) {
+                    newResolved.push(target.replace(v, val));
+                  });
+                });
+                resolved = newResolved;
+              });
             }
-            return [result];
+            return resolved;
+          }
+        }, {
+          key: 'getVarValues',
+          value: function getVarValues(variable, scopedVars) {
+            var values = this.templateSrv.replace(variable, scopedVars);
+            // result might be in like "{id1,id2,id3}" (as string)
+            if (values.startsWith('{')) {
+              return values.substring(1, values.length - 1).split(',');
+            }
+            return [values];
           }
         }]);
 
