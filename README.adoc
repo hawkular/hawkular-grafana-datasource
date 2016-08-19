@@ -49,6 +49,7 @@ grunt
 ----
 
 Files are generated under the `dist` directory.
+To test your build, copy these files to `${GRAFANA_PLUGINS}/hawkular` and restart grafana-server.
 
 == Building and running a Docker image
 
