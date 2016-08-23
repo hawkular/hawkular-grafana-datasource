@@ -69,16 +69,19 @@ describe('HawkularDatasource', function () {
       targets: [{
         target: 'memory',
         type: 'gauge',
-        rate: false
+        rate: false,
+        queryBy: 'ids'
       }, {
         target: 'packets',
         type: 'counter',
-        rate: true
+        rate: true,
+        queryBy: 'ids'
       }]
     };
 
     ctx.backendSrv.datasourceRequest = function (request) {
       var pathElements = parsePathElements(request);
+      var id = pathElements[2] == 'gauges' ? 'memory' : 'packets';
 
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -88,20 +91,21 @@ describe('HawkularDatasource', function () {
         expect(request.data).to.deep.equal({
           start: options.range.from,
           end: options.range.to,
-          ids: ['memory']
+          ids: [id]
         });
       } else {
         expect(pathElements.slice(3)).to.deep.equal(['rate', 'query']);
         expect(request.data).to.deep.equal({
           start: options.range.from,
           end: options.range.to,
-          ids: ['packets']
+          ids: [id]
         });
       }
 
       return ctx.$q.when({
         status: 200,
         data: [{
+          id: id,
           data: [{
             timestamp: 13,
             value: 15
@@ -127,31 +131,6 @@ describe('HawkularDatasource', function () {
     });
   });
 
-  it('should resolve single variable', function (done) {
-    ctx.templateSrv.replace = function (target, vars) {
-      expect(target).to.equal('$app');
-      return "{app_1,app_2}";
-    };
-    var resolved = ctx.ds.resolveVariables("$app/memory/usage");
-    expect(resolved).to.deep.equal(['app_1/memory/usage', 'app_2/memory/usage']);
-    done();
-  });
-
-  it('should resolve multiple variables', function (done) {
-    ctx.templateSrv.replace = function (target, vars) {
-      if (target === '$app') {
-        return "{app_1,app_2}";
-      }
-      if (target === '$container') {
-        return "{1234,5678,90}";
-      }
-      return target;
-    };
-    var resolved = ctx.ds.resolveVariables("$app/$container/memory/usage");
-    expect(resolved).to.deep.equal(['app_1/1234/memory/usage', 'app_2/1234/memory/usage', 'app_1/5678/memory/usage', 'app_2/5678/memory/usage', 'app_1/90/memory/usage', 'app_2/90/memory/usage']);
-    done();
-  });
-
   it('should return multiple results with templated target', function (done) {
 
     var options = {
@@ -162,7 +141,8 @@ describe('HawkularDatasource', function () {
       targets: [{
         target: '$app/memory',
         type: 'gauge',
-        rate: false
+        rate: false,
+        queryBy: 'ids'
       }]
     };
 

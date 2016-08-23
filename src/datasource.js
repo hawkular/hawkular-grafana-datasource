@@ -1,5 +1,6 @@
 import _ from "lodash";
-import {Aggregations} from './aggregations';
+import {Variables} from './variables';
+import {QueryProcessor} from './queryProcessor';
 
 export class HawkularDatasource {
 
@@ -11,8 +12,8 @@ export class HawkularDatasource {
     this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
-    this.templateSrv = templateSrv;
-    this.aggregations = new Aggregations();
+    let variables = new Variables(templateSrv);
+    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.url, this.createHeaders());
   }
 
   query(options) {
@@ -24,62 +25,13 @@ export class HawkularDatasource {
       return this.q.when({data: []});
     }
 
-    let promises = validTargets.map(target =>
-      this.queryOnTarget(target, options)
-        .then(response => this.processResponse(target, response)));
+    let promises = validTargets.map(target => {
+      return this.queryProcessor.run(target, options);
+    });
 
     return this.q.all(promises).then(responses => {
       let flatten = [].concat.apply([], responses);
       return {data: flatten};
-    });
-  }
-
-  queryOnTarget(target, options) {
-    let uri = [
-      target.type + 's',            // gauges or counters
-      target.rate ? 'rate' : 'raw', // raw or rate
-      'query'
-    ];
-    let url = this.url + '/' + uri.join('/');
-    let metricIds = this.resolveVariables(target.target, options.scopedVars || this.templateSrv.variables);
-
-    return this.backendSrv.datasourceRequest({
-      url: url,
-      data: {
-        ids: metricIds,
-        start: options.range.from.valueOf(),
-        end: options.range.to.valueOf()
-      },
-      method: 'POST',
-      headers: this.createHeaders()
-    }).then(response => {
-      return {
-        target: metricIds[0],
-        hawkularJson: response.status == 200 ? response.data : []
-      };
-    });
-  }
-
-  processResponse(target, response) {
-    var hawkularJson;
-    if (target.reduce === 'sum') {
-      hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.sum);
-    } else if (target.reduce === 'average') {
-      hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.average);
-    } else if (target.reduce === 'min') {
-      hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.min);
-    } else if (target.reduce === 'max') {
-      hawkularJson = this.aggregations.on(response.hawkularJson, this.aggregations.max);
-    } else {
-      hawkularJson = response.hawkularJson;
-    }
-    let multipleSeries = hawkularJson.length > 1;
-    return hawkularJson.map(timeSerie => {
-      return {
-        refId: target.refId,
-        target: multipleSeries ? timeSerie.id : response.target,
-        datapoints: timeSerie.data.map(point => [point.value, point.timestamp])
-      };
     });
   }
 
@@ -115,10 +67,9 @@ export class HawkularDatasource {
     });
   }
 
-  metricFindQuery(options) {
+  suggestQueries(target) {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics',
-      params: {type: options.type},
+      url: this.url + '/metrics?type=' + target.type,
       method: 'GET',
       headers: this.createHeaders()
     }).then(result => {
@@ -128,30 +79,66 @@ export class HawkularDatasource {
     });
   }
 
-  resolveVariables(target, scopedVars) {
-    let variables = target.match(/\$\w+/g);
-    var resolved = [target];
-    if (variables) {
-      variables.forEach(v => {
-        let values = this.getVarValues(v, scopedVars);
-        let newResolved = [];
-        values.forEach(val => {
-          resolved.forEach(target => {
-            newResolved.push(target.replace(v, val));
-          });
-        });
-        resolved = newResolved;
-      });
+  suggestTags(type, key) {
+    if (!key) {
+      // Need at least some characters typed in order to suggest something
+      return this.q.when([]);
     }
-    return resolved;
+    return this.backendSrv.datasourceRequest({
+      url: this.url + '/' + type + 's/tags/' + key + ':*',
+      method: 'GET',
+      headers: this.createHeaders()
+    }).then(result => {
+      if (result.data.hasOwnProperty(key)) {
+        return [' *'].concat(result.data[key]).map(value => {
+          return {text: value, value: value};
+        });
+      }
+      return [];
+    });
   }
 
-  getVarValues(variable, scopedVars) {
-    let values = this.templateSrv.replace(variable, scopedVars);
-    // result might be in like "{id1,id2,id3}" (as string)
-    if (values.startsWith('{')) {
-        return values.substring(1, values.length-1).split(',');
+  metricFindQuery(query) {
+    var params = "";
+    if (query !== undefined) {
+      if (query.startsWith("tags/")) {
+        return this.findTags(query.substr(5).trim());
+      }
+      if (query.startsWith("?")) {
+        params = query;
+      } else {
+        params = "?" + query;
+      }
     }
-    return [values];
+    return this.backendSrv.datasourceRequest({
+      url: this.url + '/metrics' + params,
+      method: 'GET',
+      headers: this.createHeaders()
+    }).then(result => {
+      return _.map(result.data, metric => {
+        return {text: metric.id, value: metric.id};
+      });
+    });
+  }
+
+  findTags(pattern) {
+    return this.backendSrv.datasourceRequest({
+      url: this.url + '/metrics/tags/' + pattern,
+      method: 'GET',
+      headers: this.createHeaders()
+    }).then(result => {
+      var flatTags = [];
+      if (result.data) {
+        var data = result.data;
+        for (var property in data) {
+          if (data.hasOwnProperty(property)) {
+            flatTags = flatTags.concat(data[property]);
+          }
+        }
+      }
+      return flatTags.map(tag => {
+        return {text: tag, value: tag};
+      });
+    });
   }
 }

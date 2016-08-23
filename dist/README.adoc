@@ -42,6 +42,7 @@ Openshift-Metrics users must provide an authentication token.
 == Building
 
 You need `npm` and `grunt` to build the project. Clone this repository, then from that directory run:
+
 [source,bash]
 ----
 npm install
@@ -49,3 +50,13 @@ grunt
 ----
 
 Files are generated under the `dist` directory.
+
+== Building and running a Docker image
+
+[source,bash]
+----
+# This will build the image
+docker build -t hawkular/hawkular-grafana-datasource .
+# This will run the image on http://localhost:3000/
+docker run -i -p 3000:3000 --name hawkular-grafana-datasource --rm hawkular/hawkular-grafana-datasource
+----

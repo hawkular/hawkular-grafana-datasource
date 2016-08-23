@@ -20,30 +20,80 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var HawkularDatasourceQueryCtrl = exports.HawkularDatasourceQueryCtrl = function (_QueryCtrl) {
   _inherits(HawkularDatasourceQueryCtrl, _QueryCtrl);
 
-  function HawkularDatasourceQueryCtrl($scope, $injector, uiSegmentSrv) {
+  function HawkularDatasourceQueryCtrl($scope, $injector, uiSegmentSrv, $q) {
     _classCallCheck(this, HawkularDatasourceQueryCtrl);
 
     var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(HawkularDatasourceQueryCtrl).call(this, $scope, $injector));
 
     _this.scope = $scope;
     _this.uiSegmentSrv = uiSegmentSrv;
+    _this.$q = $q;
+
+    _this.listQueryBy = [{ value: 'ids', text: 'Search by name' }, { value: 'tags', text: 'Search by tags' }];
 
     _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }];
 
-    _this.reduceFunctions = [{ value: 'none', text: 'None' }, { value: 'sum', text: 'Sum' }, { value: 'average', text: 'Average' }, { value: 'min', text: 'min' }, { value: 'max', text: 'max' }];
-
-    _this.target.type = _this.target.type || 'gauge';
+    _this.target.queryBy = _this.target.queryBy || _this.listQueryBy[0].value;
+    _this.target.type = _this.target.type || _this.metricTypes[0].value;
     _this.target.target = _this.target.target || 'select metric';
     _this.target.rate = _this.target.rate === true;
-    _this.target.reduce = _this.target.reduce || 'none';
-    console.log(_this);
+    _this.target.tags = _this.target.tags || [];
+
+    _this.tagsSegments = _.reduce(_this.target.tags, function (list, tag) {
+      list.push(uiSegmentSrv.newKey(tag.name));
+      list.push(uiSegmentSrv.newOperator(':'));
+      list.push(uiSegmentSrv.newKeyValue(tag.value));
+      list.push(uiSegmentSrv.newOperator(','));
+      return list;
+    }, []);
+    _this.tagsSegments.push(uiSegmentSrv.newPlusButton());
+    _this.removeTagsSegment = uiSegmentSrv.newSegment({ fake: true, value: '-- Remove tag --' });
     return _this;
   }
 
   _createClass(HawkularDatasourceQueryCtrl, [{
+    key: 'getTagsSegments',
+    value: function getTagsSegments(segment, $index) {
+      if (segment.type === 'plus-button') {
+        return this.$q.when([]);
+      } else if (segment.type === 'key') {
+        return this.$q.when([angular.copy(this.removeTagsSegment)]);
+      } else if (segment.type === 'value') {
+        var key = this.tagsSegments[$index - 2].value;
+        return this.datasource.suggestTags(this.target.type, key).then(this.uiSegmentSrv.transformToSegments(false));
+      }
+    }
+  }, {
+    key: 'tagsSegmentChanged',
+    value: function tagsSegmentChanged(segment, index) {
+      if (segment.value === this.removeTagsSegment.value) {
+        this.tagsSegments.splice(index, 4);
+      } else if (segment.type === 'plus-button') {
+        this.tagsSegments.splice(index, 1, this.uiSegmentSrv.newOperator(','));
+        this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newKeyValue(' *'));
+        this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newOperator(':'));
+        this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newKey(segment.value));
+        this.tagsSegments.push(this.uiSegmentSrv.newPlusButton());
+      } else {
+        this.tagsSegments[index] = segment;
+      }
+      this.tagsToModel();
+      this.onChangeInternal();
+    }
+  }, {
+    key: 'tagsToModel',
+    value: function tagsToModel() {
+      this.target.tags = [];
+      for (var i = 0; i < this.tagsSegments.length - 2; i += 4) {
+        var key = this.tagsSegments[i].value;
+        var val = this.tagsSegments[i + 2].fake ? '*' : this.tagsSegments[i + 2].value || '*';
+        this.target.tags.push({ name: key, value: val });
+      }
+    }
+  }, {
     key: 'getOptions',
     value: function getOptions() {
-      return this.datasource.metricFindQuery(this.target).then(this.uiSegmentSrv.transformToSegments(false));
+      return this.datasource.suggestQueries(this.target).then(this.uiSegmentSrv.transformToSegments(false));
       // Options have to be transformed by uiSegmentSrv to be usable by metric-segment-model directive
     }
   }, {
