@@ -8,6 +8,8 @@ This project is the Hawkular Datasource plugin for Grafana 3. It works with:
 
 == Installing
 
+NOTE: If you don't have Grafana yet, link:http://grafana.org/download/[download and install it].
+
 === From source
 
 Download the source code and copy the content of `dist` to `hawkular` inside Grafana's plugin directory.
