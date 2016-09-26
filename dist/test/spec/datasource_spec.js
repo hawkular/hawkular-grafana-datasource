@@ -24,6 +24,9 @@ describe('GenericDatasource', function () {
   beforeEach(function () {
     ctx.$q = _q2.default;
     ctx.backendSrv = {};
+    ctx.backendSrv.datasourceRequest = function (request) {
+      return ctx.$q.when({ data: { 'Implementation-Version': '1.0.0' } });
+    };
     ctx.ds = new _module.Datasource(instanceSettings, ctx.$q, ctx.backendSrv);
   });
 
