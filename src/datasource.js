@@ -1,5 +1,6 @@
 import _ from "lodash";
 import {Variables} from './variables';
+import {Capabilities} from './capabilities';
 import {QueryProcessor} from './queryProcessor';
 
 export class HawkularDatasource {
@@ -13,8 +14,9 @@ export class HawkularDatasource {
     this.q = $q;
     this.backendSrv = backendSrv;
     let variables = new Variables(templateSrv);
-    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.url, this.createHeaders());
-    this.queryFunc = this.selectQueryFunc();
+    let capabilities = this.queryVersion()
+      .then(version => new Capabilities(version));
+    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, capabilities, this.url, this.createHeaders());
   }
 
   query(options) {
@@ -33,38 +35,6 @@ export class HawkularDatasource {
     return this.q.all(promises).then(responses => {
       let flatten = [].concat.apply([], responses);
       return {data: flatten};
-    });
-  }
-
-  getData(target, start, end) {
-    var uri = [];
-    uri.push(target.type + 's'); // gauges or counters
-    uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
-    uri.push('query');
-
-    var url = this.url + '/' + uri.join('/');
-
-    return this.backendSrv.datasourceRequest({
-      url: url,
-      data: {
-        ids: [target.target],
-        start: start,
-        end: end
-      },
-      method: 'POST',
-      headers: this.createHeaders()
-    }).then(response => {
-      var datapoints;
-      if (response.data.length != 0) {
-        datapoints = _.map(response.data[0].data, point => [point.value, point.timestamp]);
-      } else {
-        datapoints = [];
-      }
-      return {
-        refId: target.refId,
-        target: target.target,
-        datapoints: datapoints
-      };
     });
   }
 
@@ -221,25 +191,12 @@ export class HawkularDatasource {
     });
   }
 
-  selectQueryFunc() {
+  queryVersion() {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/status',
       method: 'GET',
       headers: {'Content-Type': 'application/json'}
-    }).then(response => {
-      var version = response.data['Implementation-Version'];
-      var regExp = new RegExp('([0-9]+)\.([0-9]+)\.(.+)');
-      if (version.match(regExp)) {
-        var versionInfo = regExp.exec(version);
-        var major = versionInfo[1];
-        var minor = versionInfo[2];
-        if (major == 0) {
-          if (minor < 17) {
-            return this.getDataLegacy;
-          }
-        }
-      }
-      return this.getData;
-    }).catch(response => this.getData);
+    }).then(response => response.data['Implementation-Version'])
+    .catch(response => "Unknown");
   }
 }

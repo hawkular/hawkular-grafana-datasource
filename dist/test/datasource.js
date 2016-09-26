@@ -13,6 +13,8 @@ var _lodash2 = _interopRequireDefault(_lodash);
 
 var _variables = require('./variables');
 
+var _capabilities = require('./capabilities');
+
 var _queryProcessor = require('./queryProcessor');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -31,7 +33,10 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     this.q = $q;
     this.backendSrv = backendSrv;
     var variables = new _variables.Variables(templateSrv);
-    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, variables, this.url, this.createHeaders());
+    var capabilities = this.queryVersion().then(function (version) {
+      return new _capabilities.Capabilities(version);
+    });
+    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, variables, capabilities, this.url, this.createHeaders());
   }
 
   _createClass(HawkularDatasource, [{
@@ -56,6 +61,54 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       return this.q.all(promises).then(function (responses) {
         var flatten = [].concat.apply([], responses);
         return { data: flatten };
+      });
+    }
+  }, {
+    key: 'getDataLegacy',
+    value: function getDataLegacy(target, start, end) {
+      var uri = [];
+      uri.push(target.type + 's'); // gauges or counters
+      uri.push(encodeURIComponent(target.target).replace('+', '%20')); // metric name
+      uri.push('data');
+
+      var url = this.url + '/' + uri.join('/');
+
+      return this.backendSrv.datasourceRequest({
+        url: url,
+        params: {
+          start: start,
+          end: end
+        },
+        method: 'GET',
+        headers: this.createHeaders()
+      }).then(function (response) {
+        var datapoints;
+        if (!target.rate) {
+          datapoints = _lodash2.default.map(response.data, function (point) {
+            return [point.value, point.timestamp];
+          });
+        } else {
+          var sortedData = response.data.sort(function (p1, p2) {
+            return p1.timestamp - p2.timestamp;
+          });
+          datapoints = _lodash2.default.chain(sortedData).zip(sortedData.slice(1)).filter(function (pair) {
+            return pair[1] // Exclude the last pair
+            && (target.type == 'gauge' || pair[0].value <= pair[1].value); // Exclude counter resets
+          }).map(function (pair) {
+            var point1 = pair[0],
+                point2 = pair[1];
+            var timestamp = point2.timestamp;
+            var value_diff = point2.value - point1.value;
+            var time_diff = point2.timestamp - point1.timestamp;
+            var rate = 60000 * value_diff / time_diff;
+            return [rate, timestamp];
+          }).value();
+        }
+        return {
+          refId: target.refId,
+          target: target.target,
+          datapoints: datapoints
+        };
       });
     }
   }, {
@@ -170,6 +223,19 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
         return flatTags.map(function (tag) {
           return { text: tag, value: tag };
         });
+      });
+    }
+  }, {
+    key: 'queryVersion',
+    value: function queryVersion() {
+      return this.backendSrv.datasourceRequest({
+        url: this.url + '/status',
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      }).then(function (response) {
+        return response.data['Implementation-Version'];
+      }).catch(function (response) {
+        return "Unknown";
       });
     }
   }]);

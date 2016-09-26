@@ -81,14 +81,16 @@ describe('HawkularDatasource', function () {
         expect(request.data).to.deep.equal({
           start: options.range.from,
           end: options.range.to,
-          ids: [id]
+          ids: [id],
+          order: 'ASC'
         });
       } else {
         expect(pathElements.slice(3)).to.deep.equal(['rate', 'query']);
         expect(request.data).to.deep.equal({
           start: options.range.from,
           end: options.range.to,
-          ids: [id]
+          ids: [id],
+          order: 'ASC'
         });
       }
 
