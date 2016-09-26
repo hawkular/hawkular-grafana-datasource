@@ -14,6 +14,7 @@ export class HawkularDatasource {
     this.backendSrv = backendSrv;
     let variables = new Variables(templateSrv);
     this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.url, this.createHeaders());
+    this.queryFunc = this.selectQueryFunc();
   }
 
   query(options) {
@@ -32,6 +33,84 @@ export class HawkularDatasource {
     return this.q.all(promises).then(responses => {
       let flatten = [].concat.apply([], responses);
       return {data: flatten};
+    });
+  }
+
+  getData(target, start, end) {
+    var uri = [];
+    uri.push(target.type + 's'); // gauges or counters
+    uri.push(target.rate ? 'rate' : 'raw'); // raw or rate
+    uri.push('query');
+
+    var url = this.url + '/' + uri.join('/');
+
+    return this.backendSrv.datasourceRequest({
+      url: url,
+      data: {
+        ids: [target.target],
+        start: start,
+        end: end
+      },
+      method: 'POST',
+      headers: this.createHeaders()
+    }).then(response => {
+      var datapoints;
+      if (response.data.length != 0) {
+        datapoints = _.map(response.data[0].data, point => [point.value, point.timestamp]);
+      } else {
+        datapoints = [];
+      }
+      return {
+        refId: target.refId,
+        target: target.target,
+        datapoints: datapoints
+      };
+    });
+  }
+
+  getDataLegacy(target, start, end) {
+    var uri = [];
+    uri.push(target.type + 's'); // gauges or counters
+    uri.push(encodeURIComponent(target.target).replace('+', '%20')); // metric name
+    uri.push('data');
+
+    var url = this.url + '/' + uri.join('/');
+
+    return this.backendSrv.datasourceRequest({
+      url: url,
+      params: {
+        start: start,
+        end: end
+      },
+      method: 'GET',
+      headers: this.createHeaders()
+    }).then(response => {
+      var datapoints;
+      if (!target.rate) {
+        datapoints = _.map(response.data, point => [point.value, point.timestamp]);
+      } else {
+        var sortedData = response.data.sort((p1, p2)=> p1.timestamp - p2.timestamp);
+        datapoints = _.chain(sortedData)
+          .zip(sortedData.slice(1))
+          .filter(pair => {
+            return pair[1] // Exclude the last pair
+              && (target.type == 'gauge' || pair[0].value <= pair[1].value); // Exclude counter resets
+          })
+          .map(pair => {
+            var point1 = pair[0], point2 = pair[1];
+            var timestamp = point2.timestamp;
+            var value_diff = point2.value - point1.value;
+            var time_diff = point2.timestamp - point1.timestamp;
+            var rate = 60000 * value_diff / time_diff;
+            return [rate, timestamp];
+          })
+          .value();
+      }
+      return {
+        refId: target.refId,
+        target: target.target,
+        datapoints: datapoints
+      };
     });
   }
 
@@ -140,5 +219,27 @@ export class HawkularDatasource {
         return {text: tag, value: tag};
       });
     });
+  }
+
+  selectQueryFunc() {
+    return this.backendSrv.datasourceRequest({
+      url: this.url + '/status',
+      method: 'GET',
+      headers: {'Content-Type': 'application/json'}
+    }).then(response => {
+      var version = response.data['Implementation-Version'];
+      var regExp = new RegExp('([0-9]+)\.([0-9]+)\.(.+)');
+      if (version.match(regExp)) {
+        var versionInfo = regExp.exec(version);
+        var major = versionInfo[1];
+        var minor = versionInfo[2];
+        if (major == 0) {
+          if (minor < 17) {
+            return this.getDataLegacy;
+          }
+        }
+      }
+      return this.getData;
+    }).catch(response => this.getData);
   }
 }

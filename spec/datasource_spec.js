@@ -32,6 +32,9 @@ describe('HawkularDatasource', function () {
   beforeEach(function () {
     ctx.$q = Q;
     ctx.backendSrv = {};
+    ctx.backendSrv.datasourceRequest = function (request) {
+      return ctx.$q.when({data: {'Implementation-Version': '1.0.0'}})
+    };
     ctx.templateSrv = {
         replace: function(target, vars) {
           return target;
