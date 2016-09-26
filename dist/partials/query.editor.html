@@ -6,7 +6,7 @@
 			</select>
 		</div>
 		<div class="gf-form">
-			<select class="gf-form-input" ng-model="ctrl.target.queryBy" ng-change="ctrl.onChangeInternal()">
+			<select ng-show="ctrl.queryByTagCapability" class="gf-form-input" ng-model="ctrl.target.queryBy" ng-change="ctrl.onChangeInternal()">
 				<option ng-repeat="q in ctrl.listQueryBy" value="{{q.value}}">{{q.text}}</option>
 			</select>
 		</div>

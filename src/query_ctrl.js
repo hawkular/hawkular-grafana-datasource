@@ -10,11 +10,15 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.uiSegmentSrv = uiSegmentSrv;
     this.$q = $q;
 
+    this.queryByTagCapability = false;
+    this.datasource.getCapabilities().then(caps => {
+      this.queryByTagCapability = caps.QUERY_BY_TAGS;
+    });
+
     this.listQueryBy = [
       {value: 'ids', text: 'Search by name'},
       {value: 'tags', text: 'Search by tags'}
     ];
-
     this.metricTypes = [
       {value: 'gauge', text: 'Gauge'},
       {value: 'counter', text: 'Counter'}

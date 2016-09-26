@@ -70,8 +70,12 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
           _this.uiSegmentSrv = uiSegmentSrv;
           _this.$q = $q;
 
-          _this.listQueryBy = [{ value: 'ids', text: 'Search by name' }, { value: 'tags', text: 'Search by tags' }];
+          _this.queryByTagCapability = false;
+          _this.datasource.getCapabilities().then(function (caps) {
+            _this.queryByTagCapability = caps.QUERY_BY_TAGS;
+          });
 
+          _this.listQueryBy = [{ value: 'ids', text: 'Search by name' }, { value: 'tags', text: 'Search by tags' }];
           _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }];
 
           _this.target.queryBy = _this.target.queryBy || _this.listQueryBy[0].value;

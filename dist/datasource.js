@@ -52,10 +52,10 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
           this.q = $q;
           this.backendSrv = backendSrv;
           var variables = new Variables(templateSrv);
-          var capabilities = this.queryVersion().then(function (version) {
+          this.capabilitiesPromise = this.queryVersion().then(function (version) {
             return new Capabilities(version);
           });
-          this.queryProcessor = new QueryProcessor($q, backendSrv, variables, capabilities, this.url, this.createHeaders());
+          this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders());
         }
 
         _createClass(HawkularDatasource, [{
@@ -80,54 +80,6 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
             return this.q.all(promises).then(function (responses) {
               var flatten = [].concat.apply([], responses);
               return { data: flatten };
-            });
-          }
-        }, {
-          key: 'getDataLegacy',
-          value: function getDataLegacy(target, start, end) {
-            var uri = [];
-            uri.push(target.type + 's'); // gauges or counters
-            uri.push(encodeURIComponent(target.target).replace('+', '%20')); // metric name
-            uri.push('data');
-
-            var url = this.url + '/' + uri.join('/');
-
-            return this.backendSrv.datasourceRequest({
-              url: url,
-              params: {
-                start: start,
-                end: end
-              },
-              method: 'GET',
-              headers: this.createHeaders()
-            }).then(function (response) {
-              var datapoints;
-              if (!target.rate) {
-                datapoints = _.map(response.data, function (point) {
-                  return [point.value, point.timestamp];
-                });
-              } else {
-                var sortedData = response.data.sort(function (p1, p2) {
-                  return p1.timestamp - p2.timestamp;
-                });
-                datapoints = _.chain(sortedData).zip(sortedData.slice(1)).filter(function (pair) {
-                  return pair[1] // Exclude the last pair
-                  && (target.type == 'gauge' || pair[0].value <= pair[1].value); // Exclude counter resets
-                }).map(function (pair) {
-                  var point1 = pair[0],
-                      point2 = pair[1];
-                  var timestamp = point2.timestamp;
-                  var value_diff = point2.value - point1.value;
-                  var time_diff = point2.timestamp - point1.timestamp;
-                  var rate = 60000 * value_diff / time_diff;
-                  return [rate, timestamp];
-                }).value();
-              }
-              return {
-                refId: target.refId,
-                target: target.target,
-                datapoints: datapoints
-              };
             });
           }
         }, {
@@ -256,6 +208,11 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
             }).catch(function (response) {
               return "Unknown";
             });
+          }
+        }, {
+          key: 'getCapabilities',
+          value: function getCapabilities() {
+            return this.capabilitiesPromise;
           }
         }]);
 
