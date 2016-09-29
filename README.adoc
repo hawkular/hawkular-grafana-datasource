@@ -8,6 +8,8 @@ This project is the Hawkular Datasource plugin for Grafana 3. It works with:
 
 == Installing
 
+NOTE: If you don't have Grafana yet, link:http://grafana.org/download/[download and install it].
+
 === From source
 
 Download the source code and copy the content of `dist` to `hawkular` inside Grafana's plugin directory.
@@ -41,7 +43,15 @@ Openshift-Metrics users must provide an authentication token.
 
 == Building
 
-You need `npm` and `grunt` to build the project.
+You need `npm` and `grunt` to build the project. Clone this repository, then from that directory run:
+[source,bash]
+----
+npm install
+grunt
+----
+
+Files are generated under the `dist` directory.
+To test your build, copy these files to `${GRAFANA_PLUGINS}/hawkular` and restart grafana-server.
 
 == Building and running a Docker image
 
