@@ -39,9 +39,24 @@ Select the tenant. On Hawkular servers, use `hawkular`.
 
 Openshift-Metrics users must provide an authentication token.
 
+== Using Grafana Templating (variables)
+
+Grafana allows you to create dashboard templates through the definition of variables. This is link:http://docs.grafana.org/reference/templating/[documented on Grafana's site].
+With the Hawkular Datasource Plugin, the variables of type _'Query'_ are mapped to the http://www.hawkular.org/docs/rest/rest-metrics.html#GET__metrics[_@get (url)/metrics_]
+Hawkular Metrics endpoint and can be used to retrieve tenant's metric names. Use the _Query Options_ text field to pass query parameters.
+[TIP]
+For instance, if you have metrics tagged _"type:memory"_ and others tagged _"type:cpu"_, you can write _"?tags=type:memory"_ to get only the _"memory"_ ones, or _"?tags=type:cpu|memory"_ to get them both. The leading question mark is not mandatory.
+
+There is an exception to that rule: if the query string is prefixed with _'tags/'_, the variable will contain the matching tag names rather than the metric names. In this case, the Hawkular Metrics endpoint link:++http://www.hawkular.org/docs/rest/rest-metrics.html#GET__metrics_tags__tags_++[_@get (url)/metrics/tags/{tags}_] will be used.
+[TIP]
+For instance, type _"tags/type:*"_ to get all of the available tag values for _"type"_.
+
+Once you have set some variables, you can use them in graph queries: either for row or graph duplication, or to display multiple series in a single graph from a single query. This is especially useful when metric names contain some dynamic parts and thus cannot be known in advance.
+
 == Building
 
 You need `npm` and `grunt` to build the project. Clone this repository, then from that directory run:
+
 [source,bash]
 ----
 npm install
@@ -51,3 +66,13 @@ grunt
 Files are generated under the `dist` directory.
 
 To test it, copy these files to `${GRAFANA_PLUGINS}/hawkular` and restart grafana-server.
+
+== Building and running a Docker image
+
+[source,bash]
+----
+# This will build the image
+docker build -t hawkular/hawkular-grafana-datasource .
+# This will run the image on http://localhost:3000/
+docker run -i -p 3000:3000 --name hawkular-grafana-datasource --rm hawkular/hawkular-grafana-datasource
+----
