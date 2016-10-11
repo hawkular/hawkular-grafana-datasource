@@ -18,8 +18,8 @@ Download the source code and copy the content of `dist` to `hawkular` inside Gra
 ----
 # This is the default for Linux Grafana installs. Change it to match yours, if needed.
 GRAFANA_PLUGINS=/var/lib/grafana/plugins
-wget https://github.com/hawkular/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
-unzip hawkular-grafana-datasource-master.zip
+wget https://github.com/hawkular/hawkular-grafana-datasource/archive/release.zip -O hawkular-grafana-datasource-release.zip
+unzip hawkular-grafana-datasource-release.zip
 mkdir ${GRAFANA_PLUGINS}/hawkular
 cp -R hawkular-grafana-datasource-master/dist/* ${GRAFANA_PLUGINS}/hawkular
 ----
