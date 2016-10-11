@@ -11,10 +11,26 @@ export class QueryProcessor {
 
   run(target, options) {
     return this.capabilities.then(caps => {
+      var postData = {
+        start: options.range.from.valueOf(),
+        end: options.range.to.valueOf(),
+        order: 'ASC'
+      };
+      var multipleMetrics = true;
       if (target.queryBy === 'ids') {
         let metricIds = this.variables.resolve(target.target, options);
         if (caps.QUERY_POST_ENDPOINTS) {
-          return this.rawQuery(target, options.range, metricIds);
+          if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+            postData.ids = metricIds;
+            return this.rawQuery(target, postData);
+          } else if (target.timeAggFn == 'live') {
+            // Need to change postData
+            return this.singleStatLiveQuery(target, {ids: metricIds, limit: 1});
+          } else {
+            // Need to perform multiple series aggregation
+            postData.metrics = metricIds;
+            return this.singleStatQuery(target, postData);
+          }
         } else {
           return this.rawQueryLegacy(target, options.range, metricIds);
         }
@@ -22,8 +38,16 @@ export class QueryProcessor {
         if (target.tags.length === 0) {
           return this.q.when([]);
         }
-        let strTags = this.hawkularFormatTags(target.tags, options);
-        return this.rawQueryByTags(target, options.range, strTags);
+        postData.tags = this.hawkularFormatTags(target.tags, options);
+        if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+          return this.rawQuery(target, postData);
+        } else if (target.timeAggFn == 'live') {
+          // Need to change postData
+          return this.singleStatLiveQuery(target, {tags: postData.tags, limit: 1});
+        } else {
+          // Need to perform multiple series aggregation
+          return this.singleStatQuery(target, postData);
+        }
       }
     });
   }
@@ -41,7 +65,7 @@ export class QueryProcessor {
     }).join(',');
   }
 
-  rawQuery(target, range, metricIds) {
+  rawQuery(target, postData) {
     let uri = [
       target.type + 's',            // gauges or counters
       target.rate ? 'rate' : 'raw', // raw or rate
@@ -51,12 +75,7 @@ export class QueryProcessor {
 
     return this.backendSrv.datasourceRequest({
       url: url,
-      data: {
-        ids: metricIds,
-        start: range.from.valueOf(),
-        end: range.to.valueOf(),
-        order: 'ASC'
-      },
+      data: postData,
       method: 'POST',
       headers: this.baseHeaders
     }).then(response => this.processRawResponse(target, response.status == 200 ? response.data : []));
@@ -80,27 +99,6 @@ export class QueryProcessor {
         headers: this.baseHeaders
       }).then(response => this.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []));
     }));
-  }
-
-  rawQueryByTags(target, range, tags) {
-    let uri = [
-      target.type + 's',            // gauges or counters
-      target.rate ? 'rate' : 'raw', // raw or rate
-      'query'
-    ];
-    let url = this.url + '/' + uri.join('/');
-
-    return this.backendSrv.datasourceRequest({
-      url: url,
-      data: {
-        tags: tags,
-        start: range.from.valueOf(),
-        end: range.to.valueOf(),
-        order: 'ASC'
-      },
-      method: 'POST',
-      headers: this.baseHeaders
-    }).then(response => this.processRawResponse(target, response.status == 200 ? response.data : []));
   }
 
   processRawResponse(target, data) {
@@ -140,5 +138,77 @@ export class QueryProcessor {
       target: metric,
       datapoints: datapoints
     };
+  }
+
+  singleStatQuery(target, postData) {
+    // Query for singlestat => we just ask for a single bucket
+    // But because of that we need to override Grafana behaviour, and manage ourselves the min/max/avg/etc. selection
+    var fnBucket;
+    if (target.timeAggFn == 'avg') {
+      fnBucket = bucket => bucket.avg;
+    } else if (target.timeAggFn == 'min') {
+      fnBucket = bucket => bucket.min;
+    } else if (target.timeAggFn == 'max') {
+      fnBucket = bucket => bucket.max;
+    } // no else case. "live" case was handled before
+    let url = this.url + '/' + target.type + 's/stats/query';
+    delete postData.order;
+    postData.buckets = 1;
+    postData.stacked = target.seriesAggFn === 'sum';
+    return this.backendSrv.datasourceRequest({
+      url: url,
+      data: postData,
+      method: 'POST',
+      headers: this.baseHeaders
+    }).then(response => this.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []));
+  }
+
+  processSingleStatResponse(target, fnBucket, data) {
+    return data.map(bucket => {
+      return {
+        refId: target.refId,
+        target: "Aggregate",
+        datapoints: [[fnBucket(bucket), bucket.start]]
+      };
+    });
+  }
+
+  singleStatLiveQuery(target, postData) {
+    let uri = [
+      target.type + 's',            // gauges or counters
+      target.rate ? 'rate' : 'raw', // raw or rate
+      'query'
+    ];
+    let url = this.url + '/' + uri.join('/');
+    // Set start to now - 5m
+    postData.start = Date.now() - 300000;
+    return this.backendSrv.datasourceRequest({
+      url: url,
+      data: postData,
+      method: 'POST',
+      headers: this.baseHeaders
+    }).then(response => this.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []));
+  }
+
+  processSingleStatLiveResponse(target, data) {
+    var reduceFunc;
+    if (target.seriesAggFn === 'sum') {
+      reduceFunc = (presentValues => presentValues.reduce((a,b) => a+b));
+    } else {
+      reduceFunc = (presentValues => presentValues.reduce((a,b) => a+b) / presentValues.length);
+    }
+    var datapoints;
+    let latestPoints = data.filter(timeSeries => timeSeries.data.length > 0)
+        .map(timeSeries => timeSeries.data[0]);
+    if (latestPoints.length === 0) {
+      datapoints = [];
+    } else {
+      datapoints = [reduceFunc(latestPoints.map(dp => dp.value)), latestPoints[0].timestamp];
+    }
+    return [{
+      refId: target.refId,
+      target: "Aggregate",
+      datapoints: [datapoints]
+    }];
   }
 }
