@@ -21,7 +21,7 @@ GRAFANA_PLUGINS=/var/lib/grafana/plugins
 wget https://github.com/hawkular/hawkular-grafana-datasource/archive/release.zip -O hawkular-grafana-datasource-release.zip
 unzip hawkular-grafana-datasource-release.zip
 mkdir ${GRAFANA_PLUGINS}/hawkular
-cp -R hawkular-grafana-datasource-master/dist/* ${GRAFANA_PLUGINS}/hawkular
+cp -R hawkular-grafana-datasource-release/dist/* ${GRAFANA_PLUGINS}/hawkular
 ----
 
 === From the Grafana plugin directory
