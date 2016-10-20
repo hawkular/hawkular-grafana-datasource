@@ -104,10 +104,10 @@ export class HawkularDatasource {
   metricFindQuery(query) {
     var params = "";
     if (query !== undefined) {
-      if (query.startsWith("tags/")) {
+      if (query.substr(0, 5) === "tags/") {
         return this.findTags(query.substr(5).trim());
       }
-      if (query.startsWith("?")) {
+      if (query.charAt(0) === '?') {
         params = query;
       } else {
         params = "?" + query;
