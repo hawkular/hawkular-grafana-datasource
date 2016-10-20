@@ -22,7 +22,7 @@ export class HawkularDatasource {
   query(options) {
     let validTargets = options.targets
       .filter(target => !target.hide)
-      .filter(target => target.target !== 'select metric');
+      .filter(target => (target.queryBy === 'tags' && target.tags.length > 0) || target.target !== 'select metric');
 
     if (validTargets.length === 0) {
       return this.q.when({data: []});
