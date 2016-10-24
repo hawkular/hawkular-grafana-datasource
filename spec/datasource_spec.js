@@ -171,4 +171,260 @@ describe('HawkularDatasource', function () {
       expect(result.data[1].datapoints).to.deep.equal([[28, 13], [32, 19]]);
     }).then(v => done(), err => done(err));
   });
+
+  it('should query by tags', function (done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      targets: [{
+        tags: [
+          {name: 'type', value: 'memory'},
+          {name: 'host', value: 'myhost'}
+        ],
+        type: 'gauge',
+        rate: false,
+        queryBy: 'tags'
+      }]
+    };
+
+    ctx.backendSrv.datasourceRequest = function (request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
+      expect(request.data).to.deep.equal({
+        start: options.range.from,
+        end: options.range.to,
+        tags: "type:memory,host:myhost",
+        order: 'ASC'
+      });
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          id: "myhost.metric.memory.1",
+          data: [{
+            timestamp: 13,
+            value: 15
+          }, {
+            timestamp: 19,
+            value: 21
+          }]
+        },{
+          id: "myhost.metric.memory.2",
+          data: [{
+            timestamp: 13,
+            value: 20
+          }, {
+            timestamp: 19,
+            value: 25
+          }]
+        }]
+      });
+    };
+
+    ctx.ds.query(options).then(function (result) {
+      expect(result.data).to.have.length(2);
+      expect(result.data.map(t => t.target)).to.include.members(['myhost.metric.memory.1', 'myhost.metric.memory.2']);
+      expect(result.data[0].datapoints).to.deep.equal([[15, 13], [21, 19]]);
+      expect(result.data[1].datapoints).to.deep.equal([[20, 13], [25, 19]]);
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should return aggregated stats max/stacked', function (done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      targets: [{
+        seriesAggFn: 'sum',
+        timeAggFn: 'max',
+        tags: [{name: 'type', value: 'memory'}],
+        type: 'gauge',
+        rate: false,
+        queryBy: 'tags'
+      }]
+    };
+
+    ctx.backendSrv.datasourceRequest = function (request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'stats', 'query']);
+      expect(request.data).to.deep.equal({
+        start: options.range.from,
+        end: options.range.to,
+        tags: "type:memory",
+        buckets: 1,
+        stacked: true
+      });
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          start: 13,
+          end: 19,
+          min: 35,
+          max: 46,
+          avg: 40.5
+        }]
+      });
+    };
+
+    ctx.ds.query(options).then(function (result) {
+      expect(result.data).to.have.length(1);
+      expect(result.data[0].datapoints).to.deep.equal([[46, 13]]);
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should return aggregated stats avg/not stacked', function (done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      targets: [{
+        seriesAggFn: 'avg',
+        timeAggFn: 'avg',
+        tags: [{name: 'type', value: 'memory'}],
+        type: 'gauge',
+        rate: false,
+        queryBy: 'tags'
+      }]
+    };
+
+    ctx.backendSrv.datasourceRequest = function (request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'stats', 'query']);
+      expect(request.data).to.deep.equal({
+        start: options.range.from,
+        end: options.range.to,
+        tags: "type:memory",
+        buckets: 1,
+        stacked: false
+      });
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          start: 13,
+          end: 19,
+          min: 15,
+          max: 25,
+          avg: 20.25
+        }]
+      });
+    };
+
+    ctx.ds.query(options).then(function (result) {
+      expect(result.data).to.have.length(1);
+      expect(result.data[0].datapoints).to.deep.equal([[20.25, 13]]);
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should return live stats stacked', function (done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      targets: [{
+        seriesAggFn: 'sum',
+        timeAggFn: 'live',
+        tags: [{name: 'type', value: 'memory'}],
+        type: 'gauge',
+        rate: false,
+        queryBy: 'tags'
+      }]
+    };
+
+    ctx.backendSrv.datasourceRequest = function (request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
+      expect(request.data.limit).to.equal(1);
+      expect(request.data.tags).to.equal("type:memory");
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          id: "myhost.metric.memory.1",
+          data: [{
+            timestamp: 19,
+            value: 21
+          }]
+        },{
+          id: "myhost.metric.memory.2",
+          data: [{
+            timestamp: 19,
+            value: 25
+          }]
+        }]
+      });
+    };
+
+    ctx.ds.query(options).then(function (result) {
+      expect(result.data).to.have.length(1);
+      expect(result.data[0].datapoints).to.deep.equal([[46, 19]]);
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should return live stats not stacked', function (done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      targets: [{
+        seriesAggFn: 'avg',
+        timeAggFn: 'live',
+        tags: [{name: 'type', value: 'memory'}],
+        type: 'gauge',
+        rate: false,
+        queryBy: 'tags'
+      }]
+    };
+
+    ctx.backendSrv.datasourceRequest = function (request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
+      expect(request.data.limit).to.equal(1);
+      expect(request.data.tags).to.equal("type:memory");
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          id: "myhost.metric.memory.1",
+          data: [{
+            timestamp: 19,
+            value: 21
+          }]
+        },{
+          id: "myhost.metric.memory.2",
+          data: [{
+            timestamp: 19,
+            value: 25
+          }]
+        }]
+      });
+    };
+
+    ctx.ds.query(options).then(function (result) {
+      expect(result.data).to.have.length(1);
+      expect(result.data[0].datapoints).to.deep.equal([[23, 19]]);
+    }).then(v => done(), err => done(err));
+  });
 });
