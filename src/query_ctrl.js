@@ -11,8 +11,10 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.$q = $q;
 
     this.queryByTagCapability = false;
+    this.statsPostCapability = false;
     this.datasource.getCapabilities().then(caps => {
       this.queryByTagCapability = caps.QUERY_BY_TAGS;
+      this.statsPostCapability = caps.QUERY_STATS_POST_ENDPOINTS;
     });
 
     this.listQueryBy = [
@@ -23,12 +25,25 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       {value: 'gauge', text: 'Gauge'},
       {value: 'counter', text: 'Counter'}
     ];
+    this.seriesAggFns = [
+      {value: 'none', text: 'None'},
+      {value: 'sum', text: 'Sum'},
+      {value: 'avg', text: 'Average'}
+    ];
+    this.timeAggFns = [
+      {value: 'avg', text: 'Average'},
+      {value: 'min', text: 'Min'},
+      {value: 'max', text: 'Max'},
+      {value: 'live', text: 'Live'}
+    ];
 
     this.target.queryBy = this.target.queryBy || this.listQueryBy[0].value;
     this.target.type = this.target.type || this.metricTypes[0].value;
     this.target.target = this.target.target || 'select metric';
     this.target.rate = this.target.rate === true;
     this.target.tags = this.target.tags || [];
+    this.target.seriesAggFn = this.target.seriesAggFn || this.seriesAggFns[0].value;
+    this.target.timeAggFn = this.target.timeAggFn || this.timeAggFns[0].value;
 
     this.tagsSegments = _.reduce(this.target.tags, function(list, tag) {
       list.push(uiSegmentSrv.newKey(tag.name));

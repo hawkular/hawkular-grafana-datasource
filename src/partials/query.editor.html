@@ -18,4 +18,18 @@
 		</div>
 		<gf-form-switch class="gf-form" label="Rate" checked="ctrl.target.rate" switch-class="max-width-6" on-change="ctrl.onChangeInternal()"></gf-form-switch>
 	</div>
+	<div class="gf-form-inline" ng-show="ctrl.statsPostCapability" ng-if="ctrl.panel.type === 'singlestat'">
+		<div class="gf-form">
+			<label class="gf-form-label">Multiple series aggregation</label>
+			<select class="gf-form-input" ng-model="ctrl.target.seriesAggFn" ng-change="ctrl.onChangeInternal()">
+				<option ng-repeat="fn in ctrl.seriesAggFns" value="{{fn.value}}">{{fn.text}}</option>
+			</select>
+		</div>
+		<div class="gf-form">
+			<label class="gf-form-label">Time aggregation</label>
+			<select class="gf-form-input" ng-model="ctrl.target.timeAggFn" ng-change="ctrl.onChangeInternal()">
+				<option ng-repeat="fn in ctrl.timeAggFns" value="{{fn.value}}">{{fn.text}}</option>
+			</select>
+		</div>
+	</div>
 </query-editor-row>
