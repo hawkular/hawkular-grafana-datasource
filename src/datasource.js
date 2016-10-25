@@ -22,7 +22,7 @@ export class HawkularDatasource {
   query(options) {
     let validTargets = options.targets
       .filter(target => !target.hide)
-      .filter(target => target.target !== 'select metric');
+      .filter(target => (target.queryBy === 'tags' && target.tags.length > 0) || target.target !== 'select metric');
 
     if (validTargets.length === 0) {
       return this.q.when({data: []});
@@ -104,10 +104,10 @@ export class HawkularDatasource {
   metricFindQuery(query) {
     var params = "";
     if (query !== undefined) {
-      if (query.startsWith("tags/")) {
+      if (query.substr(0, 5) === "tags/") {
         return this.findTags(query.substr(5).trim());
       }
-      if (query.startsWith("?")) {
+      if (query.charAt(0) === '?') {
         params = query;
       } else {
         params = "?" + query;
