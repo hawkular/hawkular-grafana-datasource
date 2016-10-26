@@ -1,0 +1,21 @@
+= Releasing process
+
+[source,bash]
+----
+# local release branch tracks upstream/release
+git checkout release
+git pull upstream/release
+git merge upstream/master
+grunt && grunt bump
+# check log...
+git log --name-only
+# ... you should only have files in "dist" and package.json
+# Last commit must be "Release vX.Y.Z", and previous must be master's merge commit. No more.
+git push upstream HEAD:release
+git push upstream --tags
+----
+
+Some stuff to keep in mind:
+
+- Never commit anything on release. Only allowed commits are master's merge and grunt bump.
+- Never pull or rebase release back to master. The commit tagged "ReleaseT0" should never appear on master.
