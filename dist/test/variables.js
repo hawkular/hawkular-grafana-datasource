@@ -43,7 +43,7 @@ var Variables = exports.Variables = function () {
     value: function getVarValues(name, variables) {
       var values = this.templateSrv.replace(name, variables);
       // result might be in like "{id1,id2,id3}" (as string)
-      if (values.startsWith('{')) {
+      if (values.charAt(0) === '{') {
         return values.substring(1, values.length - 1).split(',');
       }
       return [values];

@@ -26,10 +26,26 @@ var QueryProcessor = exports.QueryProcessor = function () {
       var _this = this;
 
       return this.capabilities.then(function (caps) {
+        var postData = {
+          start: options.range.from.valueOf(),
+          end: options.range.to.valueOf(),
+          order: 'ASC'
+        };
+        var multipleMetrics = true;
         if (target.queryBy === 'ids') {
           var metricIds = _this.variables.resolve(target.target, options);
           if (caps.QUERY_POST_ENDPOINTS) {
-            return _this.rawQuery(target, options.range, metricIds);
+            if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+              postData.ids = metricIds;
+              return _this.rawQuery(target, postData);
+            } else if (target.timeAggFn == 'live') {
+              // Need to change postData
+              return _this.singleStatLiveQuery(target, { ids: metricIds, limit: 1 });
+            } else {
+              // Need to perform multiple series aggregation
+              postData.metrics = metricIds;
+              return _this.singleStatQuery(target, postData);
+            }
           } else {
             return _this.rawQueryLegacy(target, options.range, metricIds);
           }
@@ -37,8 +53,16 @@ var QueryProcessor = exports.QueryProcessor = function () {
           if (target.tags.length === 0) {
             return _this.q.when([]);
           }
-          var strTags = _this.hawkularFormatTags(target.tags, options);
-          return _this.rawQueryByTags(target, options.range, strTags);
+          postData.tags = _this.hawkularFormatTags(target.tags, options);
+          if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+            return _this.rawQuery(target, postData);
+          } else if (target.timeAggFn == 'live') {
+            // Need to change postData
+            return _this.singleStatLiveQuery(target, { tags: postData.tags, limit: 1 });
+          } else {
+            // Need to perform multiple series aggregation
+            return _this.singleStatQuery(target, postData);
+          }
         }
       });
     }
@@ -60,7 +84,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
     }
   }, {
     key: 'rawQuery',
-    value: function rawQuery(target, range, metricIds) {
+    value: function rawQuery(target, postData) {
       var _this3 = this;
 
       var uri = [target.type + 's', // gauges or counters
@@ -70,12 +94,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
 
       return this.backendSrv.datasourceRequest({
         url: url,
-        data: {
-          ids: metricIds,
-          start: range.from.valueOf(),
-          end: range.to.valueOf(),
-          order: 'ASC'
-        },
+        data: postData,
         method: 'POST',
         headers: this.baseHeaders
       }).then(function (response) {
@@ -105,30 +124,6 @@ var QueryProcessor = exports.QueryProcessor = function () {
           return _this4.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []);
         });
       }));
-    }
-  }, {
-    key: 'rawQueryByTags',
-    value: function rawQueryByTags(target, range, tags) {
-      var _this5 = this;
-
-      var uri = [target.type + 's', // gauges or counters
-      target.rate ? 'rate' : 'raw', // raw or rate
-      'query'];
-      var url = this.url + '/' + uri.join('/');
-
-      return this.backendSrv.datasourceRequest({
-        url: url,
-        data: {
-          tags: tags,
-          start: range.from.valueOf(),
-          end: range.to.valueOf(),
-          order: 'ASC'
-        },
-        method: 'POST',
-        headers: this.baseHeaders
-      }).then(function (response) {
-        return _this5.processRawResponse(target, response.status == 200 ? response.data : []);
-      });
     }
   }, {
     key: 'processRawResponse',
@@ -173,6 +168,107 @@ var QueryProcessor = exports.QueryProcessor = function () {
         target: metric,
         datapoints: datapoints
       };
+    }
+  }, {
+    key: 'singleStatQuery',
+    value: function singleStatQuery(target, postData) {
+      var _this5 = this;
+
+      // Query for singlestat => we just ask for a single bucket
+      // But because of that we need to override Grafana behaviour, and manage ourselves the min/max/avg/etc. selection
+      var fnBucket;
+      if (target.timeAggFn == 'avg') {
+        fnBucket = function fnBucket(bucket) {
+          return bucket.avg;
+        };
+      } else if (target.timeAggFn == 'min') {
+        fnBucket = function fnBucket(bucket) {
+          return bucket.min;
+        };
+      } else if (target.timeAggFn == 'max') {
+        fnBucket = function fnBucket(bucket) {
+          return bucket.max;
+        };
+      } // no else case. "live" case was handled before
+      var url = this.url + '/' + target.type + 's/stats/query';
+      delete postData.order;
+      postData.buckets = 1;
+      postData.stacked = target.seriesAggFn === 'sum';
+      return this.backendSrv.datasourceRequest({
+        url: url,
+        data: postData,
+        method: 'POST',
+        headers: this.baseHeaders
+      }).then(function (response) {
+        return _this5.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
+      });
+    }
+  }, {
+    key: 'processSingleStatResponse',
+    value: function processSingleStatResponse(target, fnBucket, data) {
+      return data.map(function (bucket) {
+        return {
+          refId: target.refId,
+          target: "Aggregate",
+          datapoints: [[fnBucket(bucket), bucket.start]]
+        };
+      });
+    }
+  }, {
+    key: 'singleStatLiveQuery',
+    value: function singleStatLiveQuery(target, postData) {
+      var _this6 = this;
+
+      var uri = [target.type + 's', // gauges or counters
+      target.rate ? 'rate' : 'raw', // raw or rate
+      'query'];
+      var url = this.url + '/' + uri.join('/');
+      // Set start to now - 5m
+      postData.start = Date.now() - 300000;
+      return this.backendSrv.datasourceRequest({
+        url: url,
+        data: postData,
+        method: 'POST',
+        headers: this.baseHeaders
+      }).then(function (response) {
+        return _this6.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
+      });
+    }
+  }, {
+    key: 'processSingleStatLiveResponse',
+    value: function processSingleStatLiveResponse(target, data) {
+      var reduceFunc;
+      if (target.seriesAggFn === 'sum') {
+        reduceFunc = function reduceFunc(presentValues) {
+          return presentValues.reduce(function (a, b) {
+            return a + b;
+          });
+        };
+      } else {
+        reduceFunc = function reduceFunc(presentValues) {
+          return presentValues.reduce(function (a, b) {
+            return a + b;
+          }) / presentValues.length;
+        };
+      }
+      var datapoints;
+      var latestPoints = data.filter(function (timeSeries) {
+        return timeSeries.data.length > 0;
+      }).map(function (timeSeries) {
+        return timeSeries.data[0];
+      });
+      if (latestPoints.length === 0) {
+        datapoints = [];
+      } else {
+        datapoints = [reduceFunc(latestPoints.map(function (dp) {
+          return dp.value;
+        })), latestPoints[0].timestamp];
+      }
+      return [{
+        refId: target.refId,
+        target: "Aggregate",
+        datapoints: [datapoints]
+      }];
     }
   }]);
 

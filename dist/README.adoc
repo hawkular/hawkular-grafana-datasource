@@ -1,12 +1,18 @@
 = Hawkular Datasource for Grafana
 :source-language: javascript
 
+ifdef::env-github[]
+image:https://travis-ci.org/hawkular/hawkular-grafana-datasource.svg?branch=master["Build Status", link="https://travis-ci.org/hawkular/hawkular-grafana-datasource"]
+endif::[]
+
 This project is the Hawkular Datasource plugin for Grafana 3. It works with:
 
 * Metrics standalone servers as well
 * Hawkular servers, starting from version Alpha13
 
 == Installing
+
+NOTE: If you don't have Grafana yet, link:http://grafana.org/download/[download and install it].
 
 === From source
 
@@ -16,10 +22,10 @@ Download the source code and copy the content of `dist` to `hawkular` inside Gra
 ----
 # This is the default for Linux Grafana installs. Change it to match yours, if needed.
 GRAFANA_PLUGINS=/var/lib/grafana/plugins
-wget https://github.com/hawkular/hawkular-grafana-datasource/archive/master.zip -O hawkular-grafana-datasource-master.zip
-unzip hawkular-grafana-datasource-master.zip
+wget https://github.com/hawkular/hawkular-grafana-datasource/archive/release.zip -O hawkular-grafana-datasource-release.zip
+unzip hawkular-grafana-datasource-release.zip
 mkdir ${GRAFANA_PLUGINS}/hawkular
-cp -R hawkular-grafana-datasource-master/dist/* ${GRAFANA_PLUGINS}/hawkular
+cp -R hawkular-grafana-datasource-release/dist/* ${GRAFANA_PLUGINS}/hawkular
 ----
 
 === From the Grafana plugin directory
@@ -43,11 +49,17 @@ Openshift-Metrics users must provide an authentication token.
 
 Grafana allows you to create dashboard templates through the definition of variables. This is link:http://docs.grafana.org/reference/templating/[documented on Grafana's site].
 With the Hawkular Datasource Plugin, the variables of type _'Query'_ are mapped to the http://www.hawkular.org/docs/rest/rest-metrics.html#GET__metrics[_@get (url)/metrics_]
-Hawkular Metrics endpoint and can be used to retrieve tenant's metric names. Use the _Query Options_ text field to pass query parameters.
+Hawkular Metrics endpoint and can be used to retrieve tenant's metric names. Use the _Query Options_ text field to pass query parameters, as illustrated below:
+
+image::docs/images/query-for-metrics.png[caption="Example of query by tags to get metric ids", width="600"]
+
 [TIP]
 For instance, if you have metrics tagged _"type:memory"_ and others tagged _"type:cpu"_, you can write _"?tags=type:memory"_ to get only the _"memory"_ ones, or _"?tags=type:cpu|memory"_ to get them both. The leading question mark is not mandatory.
 
 There is an exception to that rule: if the query string is prefixed with _'tags/'_, the variable will contain the matching tag names rather than the metric names. In this case, the Hawkular Metrics endpoint link:++http://www.hawkular.org/docs/rest/rest-metrics.html#GET__metrics_tags__tags_++[_@get (url)/metrics/tags/{tags}_] will be used.
+
+image::docs/images/query-for-tags.png[caption="Example of query to get matching tag values", width="600"]
+
 [TIP]
 For instance, type _"tags/type:*"_ to get all of the available tag values for _"type"_.
 
@@ -64,8 +76,7 @@ grunt
 ----
 
 Files are generated under the `dist` directory.
-
-To test it, copy these files to `${GRAFANA_PLUGINS}/hawkular` and restart grafana-server.
+To test your build, copy these files to `${GRAFANA_PLUGINS}/hawkular` and restart grafana-server.
 
 == Building and running a Docker image
 

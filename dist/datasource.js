@@ -66,7 +66,7 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
             var validTargets = options.targets.filter(function (target) {
               return !target.hide;
             }).filter(function (target) {
-              return target.target !== 'select metric';
+              return target.queryBy === 'tags' && target.tags.length > 0 || target.target !== 'select metric';
             });
 
             if (validTargets.length === 0) {
@@ -155,10 +155,10 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
           value: function metricFindQuery(query) {
             var params = "";
             if (query !== undefined) {
-              if (query.startsWith("tags/")) {
+              if (query.substr(0, 5) === "tags/") {
                 return this.findTags(query.substr(5).trim());
               }
-              if (query.startsWith("?")) {
+              if (query.charAt(0) === '?') {
                 params = query;
               } else {
                 params = "?" + query;

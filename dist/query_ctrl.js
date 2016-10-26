@@ -64,25 +64,31 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
         function HawkularDatasourceQueryCtrl($scope, $injector, uiSegmentSrv, $q) {
           _classCallCheck(this, HawkularDatasourceQueryCtrl);
 
-          var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(HawkularDatasourceQueryCtrl).call(this, $scope, $injector));
+          var _this = _possibleConstructorReturn(this, (HawkularDatasourceQueryCtrl.__proto__ || Object.getPrototypeOf(HawkularDatasourceQueryCtrl)).call(this, $scope, $injector));
 
           _this.scope = $scope;
           _this.uiSegmentSrv = uiSegmentSrv;
           _this.$q = $q;
 
           _this.queryByTagCapability = false;
+          _this.statsPostCapability = false;
           _this.datasource.getCapabilities().then(function (caps) {
             _this.queryByTagCapability = caps.QUERY_BY_TAGS;
+            _this.statsPostCapability = caps.QUERY_STATS_POST_ENDPOINTS;
           });
 
           _this.listQueryBy = [{ value: 'ids', text: 'Search by name' }, { value: 'tags', text: 'Search by tags' }];
           _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }];
+          _this.seriesAggFns = [{ value: 'none', text: 'None' }, { value: 'sum', text: 'Sum' }, { value: 'avg', text: 'Average' }];
+          _this.timeAggFns = [{ value: 'avg', text: 'Average' }, { value: 'min', text: 'Min' }, { value: 'max', text: 'Max' }, { value: 'live', text: 'Live' }];
 
           _this.target.queryBy = _this.target.queryBy || _this.listQueryBy[0].value;
           _this.target.type = _this.target.type || _this.metricTypes[0].value;
           _this.target.target = _this.target.target || 'select metric';
           _this.target.rate = _this.target.rate === true;
           _this.target.tags = _this.target.tags || [];
+          _this.target.seriesAggFn = _this.target.seriesAggFn || _this.seriesAggFns[0].value;
+          _this.target.timeAggFn = _this.target.timeAggFn || _this.timeAggFns[0].value;
 
           _this.tagsSegments = _.reduce(_this.target.tags, function (list, tag) {
             list.push(uiSegmentSrv.newKey(tag.name));
