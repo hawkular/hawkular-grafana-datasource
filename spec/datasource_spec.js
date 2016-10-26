@@ -360,7 +360,7 @@ describe('HawkularDatasource', function () {
         data: [{
           id: "myhost.metric.memory.1",
           data: [{
-            timestamp: 19,
+            timestamp: 18,
             value: 21
           }]
         },{
@@ -375,7 +375,7 @@ describe('HawkularDatasource', function () {
 
     ctx.ds.query(options).then(function (result) {
       expect(result.data).to.have.length(1);
-      expect(result.data[0].datapoints).to.deep.equal([[46, 19]]);
+      expect(result.data[0].datapoints).to.deep.equal([[46, 18]]);
     }).then(v => done(), err => done(err));
   });
 
@@ -409,7 +409,7 @@ describe('HawkularDatasource', function () {
         data: [{
           id: "myhost.metric.memory.1",
           data: [{
-            timestamp: 19,
+            timestamp: 18,
             value: 21
           }]
         },{
@@ -424,7 +424,7 @@ describe('HawkularDatasource', function () {
 
     ctx.ds.query(options).then(function (result) {
       expect(result.data).to.have.length(1);
-      expect(result.data[0].datapoints).to.deep.equal([[23, 19]]);
+      expect(result.data[0].datapoints).to.deep.equal([[23, 18]]);
     }).then(v => done(), err => done(err));
   });
 });
