@@ -13,10 +13,15 @@ export class HawkularDatasource {
     this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.typeResources = {
+      "gauge": "gauges",
+      "counter": "counters",
+      "availability": "availability"
+    };
     let variables = new Variables(templateSrv);
     this.capabilitiesPromise = this.queryVersion()
       .then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders());
+    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders(), this.typeResources);
   }
 
   query(options) {
@@ -88,7 +93,7 @@ export class HawkularDatasource {
       return this.q.when([]);
     }
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/' + type + 's/tags/' + key + ':*',
+      url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
       method: 'GET',
       headers: this.createHeaders()
     }).then(result => {

@@ -1,12 +1,15 @@
 export class QueryProcessor {
 
-  constructor(q, backendSrv, variables, capabilities, url, baseHeaders) {
+  constructor(q, backendSrv, variables, capabilities, url, baseHeaders, typeResources) {
     this.q = q;
     this.backendSrv = backendSrv;
     this.variables = variables;
     this.capabilities = capabilities;
     this.url = url;
     this.baseHeaders = baseHeaders;
+    this.typeResources = typeResources;
+    this.numericMapping = point => [point.value, point.timestamp];
+    this.availMapping = point => [point.value == 'up' ? 1 : 0, point.timestamp];
   }
 
   run(target, options) {
@@ -67,7 +70,7 @@ export class QueryProcessor {
 
   rawQuery(target, postData) {
     let uri = [
-      target.type + 's',            // gauges or counters
+      this.typeResources[target.type],            // gauges or counters
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'
     ];
@@ -84,7 +87,7 @@ export class QueryProcessor {
   rawQueryLegacy(target, range, metricIds) {
     return this.q.all(metricIds.map(metric => {
       let uri = [
-        target.type + 's',            // gauges or counters
+        this.typeResources[target.type],            // gauges or counters
         encodeURIComponent(metric).replace('+', '%20'), // metric name
         'data'];
       let url = this.url + '/' + uri.join('/');
@@ -106,22 +109,24 @@ export class QueryProcessor {
       return {
         refId: target.refId,
         target: timeSerie.id,
-        datapoints: timeSerie.data.map(point => [point.value, point.timestamp])
+        datapoints: timeSerie.data.map(target.type == 'availability' ? this.availMapping : this.numericMapping)
       };
     });
   }
 
   processRawResponseLegacy(target, metric, data) {
     var datapoints;
-    if (!target.rate) {
-      datapoints = _.map(data, point => [point.value, point.timestamp]);
+    if (target.type == 'availability') {
+      datapoints = data.map(this.availMapping);
+    } else if (!target.rate) {
+      datapoints = data.map(this.numericMapping);
     } else {
       var sortedData = data.sort((p1, p2)=> p1.timestamp - p2.timestamp);
       datapoints = _.chain(sortedData)
         .zip(sortedData.slice(1))
         .filter(pair => {
           return pair[1] // Exclude the last pair
-            && (target.type == 'gauge' || pair[0].value <= pair[1].value); // Exclude counter resets
+            && (target.type != 'counter' || pair[0].value <= pair[1].value); // Exclude counter resets
         })
         .map(pair => {
           var point1 = pair[0], point2 = pair[1];
@@ -151,7 +156,7 @@ export class QueryProcessor {
     } else if (target.timeAggFn == 'max') {
       fnBucket = bucket => bucket.max;
     } // no else case. "live" case was handled before
-    let url = this.url + '/' + target.type + 's/stats/query';
+    let url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
     delete postData.order;
     postData.buckets = 1;
     postData.stacked = target.seriesAggFn === 'sum';
@@ -175,7 +180,7 @@ export class QueryProcessor {
 
   singleStatLiveQuery(target, postData) {
     let uri = [
-      target.type + 's',            // gauges or counters
+      this.typeResources[target.type],            // gauges or counters
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'
     ];
