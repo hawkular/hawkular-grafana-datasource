@@ -11,7 +11,7 @@
 			</select>
 		</div>
 		<div class="gf-form" ng-if="ctrl.target.queryBy === 'ids'">
-			<metric-segment-model property="ctrl.target.target" get-options="ctrl.getOptions()" on-change="ctrl.onChangeInternal()" css-class="tight-form-item-xxlarge"></metric-segment-model>
+			<metric-segment-model property="ctrl.target.target" get-options="ctrl.getOptions()" on-change="ctrl.onChangeInternal()" css-class="max-width-30"></metric-segment-model>
 		</div>
 		<div class="gf-form" ng-if="ctrl.target.queryBy === 'tags'">
 			<metric-segment ng-repeat="segment in ctrl.tagsSegments" segment="segment" get-options="ctrl.getTagsSegments(segment, $index)" on-change="ctrl.tagsSegmentChanged(segment, $index)"></metric-segment>
