@@ -87,7 +87,7 @@ export class QueryProcessor {
   rawQueryLegacy(target, range, metricIds) {
     return this.q.all(metricIds.map(metric => {
       let uri = [
-        this.typeResources[target.type],            // gauges or counters
+        this.typeResources[target.type],  // gauges, counters or availability
         encodeURIComponent(metric).replace('+', '%20'), // metric name
         'data'];
       let url = this.url + '/' + uri.join('/');
@@ -180,7 +180,7 @@ export class QueryProcessor {
 
   singleStatLiveQuery(target, postData) {
     let uri = [
-      this.typeResources[target.type],            // gauges or counters
+      this.typeResources[target.type], // gauges, counters or availability
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'
     ];
