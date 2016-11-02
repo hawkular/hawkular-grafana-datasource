@@ -1,5 +1,5 @@
 {
-  "id": "hawkular",
+  "id": "hawkular-datasource",
   "type": "datasource",
   "name": "Hawkular",
   "metrics": true,
