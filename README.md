@@ -5,27 +5,6 @@ This project is the Hawkular Datasource plugin for Grafana 3. It works with:
 * Metrics standalone servers as well
 * Hawkular servers, starting from version Alpha13
 
-## Installing
-
-NOTE: If you don't have Grafana yet, [download and install it](http://grafana.org/download/).
-
-### From source
-
-Download the source code and copy the content of `dist` to `hawkular` inside Grafana's plugin directory.
-
-```bash
-# This is the default for Linux Grafana installs. Change it to match yours, if needed.
-GRAFANA_PLUGINS=/var/lib/grafana/plugins
-wget https://github.com/hawkular/hawkular-grafana-datasource/archive/release.zip -O hawkular-grafana-datasource-release.zip
-unzip hawkular-grafana-datasource-release.zip
-mkdir ${GRAFANA_PLUGINS}/hawkular
-cp -R hawkular-grafana-datasource-release/dist/* ${GRAFANA_PLUGINS}/hawkular
-```
-
-### From the Grafana plugin directory
-
-COMING SOON
-
 ## Configuration
 
 The datasource URL must point to the Hawkular Metrics service, e.g. `http://myhost:8080/hawkular/metrics`
@@ -39,19 +18,43 @@ Select the tenant. On Hawkular servers, use `hawkular`.
 
 Openshift-Metrics users must provide an authentication token.
 
-## Using Grafana Templating (variables)
+## Usage
 
-Grafana allows you to create dashboard templates through the definition of variables. 
+### Queries
+
+When adding a Graph panel, the Metrics tab allows you fetch _Gauges_ and _Counters_ metrics in Hawkular. You can either search by metric id or by tag.
+
+When searching by id, you must provide the exact metric id (or use variables, as discussed later).
+
+![Example of query by name](docs/images/search-by-name.png)
+
+When searching by tag, you must provide the tag key, followed by its value or any pattern recognized by Hawkular Metrics. Check how [tagging works in Hawkular](http://www.hawkular.org/hawkular-metrics/docs/user-guide/#_tag_filtering).
+
+- To add more tag filters, hit the "+" button and repeat the process.
+- To remove a tag, click on its key and select "Remove tag".
+
+![Example of query by tag](docs/images/search-by-tag.png)
+
+> Note that querying by tag may return multiple series for a single query, as illustrated above.
+
+When using a _Singlestat_ panel, some additional options come in. The Hawkular Datasource plugin can perform aggregations on multiple metrics, which usually the _Singlestat_ panel doesn't. It's actually a two-steps aggregation: first, multiple series are reduced into a single one (that is either the sum of its parts, or the average). Then, the resulting series is aggregated over time through another folding: min, max, average etc.
+
+![Example of singlestat panel](docs/images/single-stats-aggreg.png)
+
+> Note that because the aggregation takes place in Hawkular, the _Singlestat_ panel has nothing to aggregate. Thus in panel options, setting whatever in the _value_ field on the _Big value_ won't have any effect. However if you don't want to use the Hawkular aggregation, just set _Multiple series aggregation_ to _None_.
+
+### Templating variables
+
+Grafana allows you to create dashboard templates through the definition of variables.
 This is [documented on Grafana's site](http://docs.grafana.org/reference/templating/).
-With the Hawkular Datasource Plugin, the variables of type _'Query'_ are mapped to 
+With the Hawkular Datasource Plugin, the variables of type _'Query'_ are mapped to
 the [_@get (url)/metrics_](http://www.hawkular.org/docs/rest/rest-metrics.html#GET__metrics)
 Hawkular Metrics endpoint and can be used to retrieve tenant's metric names. Use the _Query Options_ text field to pass query parameters, as illustrated below:
 
 Example of query by tags to get metric ids
 ![Example of query by tags to get metric ids](docs/images/query-for-metrics.png)
 
-[TIP]
-For instance, if you have metrics tagged _"type:memory"_ and others tagged _"type:cpu"_, you can write _"?tags=type:memory"_ to get only the _"memory"_ ones, or _"?tags=type:cpu|memory"_ to get them both. The leading question mark is not mandatory.
+> For instance, if you have metrics tagged _"type:memory"_ and others tagged _"type:cpu"_, you can write _"tags=type:memory"_ to get only the _"memory"_ ones, or _"tags=type:cpu|memory"_ to get them both.
 
 There is an exception to that rule: if the query string is prefixed with _'tags/'_, the variable will contain the matching
 tag names rather than the metric names. In this case, the Hawkular Metrics endpoint [_@get (url)/metrics/tags/{tags}_](http://www.hawkular.org/docs/rest/rest-metrics.html#GET__metrics_tags__tags) will be used.
@@ -59,28 +62,10 @@ tag names rather than the metric names. In this case, the Hawkular Metrics endpo
 Example of query to get matching tag values
 ![example to get matching tag values](docs/images/query-for-tags.png)
 
-[TIP]
-For instance, type _"tags/type:*"_ to get all of the available tag values for _"type"_.
+> For instance, type _"tags/type:*"_ to get all of the available tag values for _"type"_.
 
 Once you have set some variables, you can use them in graph queries: either for row or graph duplication, or to display multiple series in a single graph from a single query. This is especially useful when metric names contain some dynamic parts and thus cannot be known in advance.
 
-## Building
+## Installing from sources
 
-You need `npm` and `grunt` to build the project. Clone this repository, then from that directory run:
-
-```bash
-npm install
-grunt
-```
-
-Files are generated under the `dist` directory.
-To test your build, copy these files to `${GRAFANA_PLUGINS}/hawkular` and restart grafana-server.
-
-## Building and running a Docker image
-
-```bash
-# This will build the image
-docker build -t hawkular/hawkular-grafana-datasource .
-# This will run the image on http://localhost:3000/
-docker run -i -p 3000:3000 --name hawkular-grafana-datasource --rm hawkular/hawkular-grafana-datasource
-```
+Additional information on installing from sources can be found on [hawkular.org](http://www.hawkular.org/hawkular-clients/grafana/docs/quickstart-guide/).
