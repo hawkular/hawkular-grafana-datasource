@@ -61,7 +61,7 @@ export class HawkularDatasource {
       headers: this.createHeaders()
     }).then(response => {
       if (response.status === 200) {
-        let tenantFound = response.data.filter(t => t.id === this.tenant).length > 0;
+        let tenantFound = response.data.filter && response.data.filter(t => t.id === this.tenant).length > 0;
         if (tenantFound) {
           return { status: "success", message: "Data source is working", title: "Success" };
         } else {
