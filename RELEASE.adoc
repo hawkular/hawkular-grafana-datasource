@@ -4,13 +4,20 @@
 ----
 # local release branch tracks upstream/release
 git checkout release
-git pull upstream/release
+git pull upstream release
+
+# merge master
 git merge upstream/master
-grunt && grunt bump
+
+# release.sh will build with grunt and proceed with bumping
+./release.sh
+
 # check log...
 git log --name-only
-# ... you should only have files in "dist" and package.json
+# ... you should only have files in "dist", package.json and plugin.json
 # Last commit must be "Release vX.Y.Z", and previous must be master's merge commit. No more.
+
+# finally, push to remote
 git push upstream HEAD:release
 git push upstream --tags
 ----
