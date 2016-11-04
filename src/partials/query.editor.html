@@ -16,9 +16,9 @@
 		<div class="gf-form" ng-if="ctrl.target.queryBy === 'tags'">
 			<metric-segment ng-repeat="segment in ctrl.tagsSegments" segment="segment" get-options="ctrl.getTagsSegments(segment, $index)" on-change="ctrl.tagsSegmentChanged(segment, $index)"></metric-segment>
 		</div>
-		<gf-form-switch class="gf-form" label="Rate" checked="ctrl.target.rate" switch-class="max-width-6" on-change="ctrl.onChangeInternal()"></gf-form-switch>
+		<gf-form-switch ng-if="ctrl.target.type !== 'availability'" class="gf-form" label="Rate" checked="ctrl.target.rate" switch-class="max-width-6" on-change="ctrl.onChangeInternal()"></gf-form-switch>
 	</div>
-	<div class="gf-form-inline" ng-show="ctrl.statsPostCapability" ng-if="ctrl.panel.type === 'singlestat'">
+	<div class="gf-form-inline" ng-show="ctrl.statsPostCapability" ng-if="ctrl.panel.type === 'singlestat' &amp;&amp; ctrl.target.type !== 'availability'">
 		<div class="gf-form">
 			<label class="gf-form-label">Multiple series aggregation</label>
 			<select class="gf-form-input" ng-model="ctrl.target.seriesAggFn" ng-change="ctrl.onChangeInternal()">

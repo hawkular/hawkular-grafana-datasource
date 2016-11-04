@@ -23,7 +23,8 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     ];
     this.metricTypes = [
       {value: 'gauge', text: 'Gauge'},
-      {value: 'counter', text: 'Counter'}
+      {value: 'counter', text: 'Counter'},
+      {value: 'availability', text: 'Availability'}
     ];
     this.seriesAggFns = [
       {value: 'none', text: 'None'},
@@ -100,6 +101,10 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
   }
 
   onChangeInternal() {
+    if (this.target.type == 'availability') {
+      // Disable multiple series aggregation
+      this.target.seriesAggFn = this.seriesAggFns[0].value;
+    }
     this.panelCtrl.refresh(); // Asks the panel to refresh data.
   }
 }

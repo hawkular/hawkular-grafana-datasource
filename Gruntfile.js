@@ -24,7 +24,7 @@ module.exports = function(grunt) {
       },
       pluginDef: {
         expand: true,
-        src: [ 'plugin.json', 'README.adoc' ],
+        src: [ 'plugin.json', 'README.md' ],
         dest: 'dist'
       }
     },
@@ -85,11 +85,11 @@ module.exports = function(grunt) {
 
     bump: {
       options: {
-        files: ['package.json'],
+        files: ['package.json', 'plugin.json', 'dist/plugin.json'],
         updateConfigs: [],
         commit: true,
         commitMessage: 'Release v%VERSION%',
-        commitFiles: ['package.json', 'dist'],
+        commitFiles: ['package.json', 'plugin.json', 'dist'],
         createTag: true,
         tagName: 'v%VERSION%',
         tagMessage: 'Version %VERSION%',

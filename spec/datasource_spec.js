@@ -427,4 +427,46 @@ describe('HawkularDatasource', function () {
       expect(result.data[0].datapoints).to.deep.equal([[23, 18]]);
     }).then(v => done(), err => done(err));
   });
+
+  it('should query availability', function (done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      targets: [{
+        target: 'myapp/health',
+        type: 'availability',
+        queryBy: 'ids'
+      }]
+    };
+
+    ctx.backendSrv.datasourceRequest = function (request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['availability', 'raw', 'query']);
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          id: "myapp/health",
+          data: [{
+            timestamp: 13,
+            value: 'up'
+          }, {
+            timestamp: 19,
+            value: 'down'
+          }]
+        }]
+      });
+    };
+
+    ctx.ds.query(options).then(function (result) {
+      expect(result.data).to.have.length(1);
+      expect(result.data[0].target).to.equal('myapp/health');
+      expect(result.data[0].datapoints).to.deep.equal([[1, 13], [0, 19]]);
+    }).then(v => done(), err => done(err));
+  });
 });

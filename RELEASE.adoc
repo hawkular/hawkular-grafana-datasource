@@ -4,18 +4,32 @@
 ----
 # local release branch tracks upstream/release
 git checkout release
-git pull upstream/release
+git pull upstream release
+
+# merge master
 git merge upstream/master
-grunt && grunt bump
+
+# release.sh will build with grunt and proceed with bumping
+./release.sh
+
 # check log...
 git log --name-only
-# ... you should only have files in "dist" and package.json
+# ... you should only have files in "dist", package.json and plugin.json
 # Last commit must be "Release vX.Y.Z", and previous must be master's merge commit. No more.
+
+# finally, push to remote
 git push upstream HEAD:release
 git push upstream --tags
 ----
 
 Some stuff to keep in mind:
 
-- Never commit anything on release. Only allowed commits are master's merge and grunt bump.
+- Never commit any code to release. Only allowed commits are master's merge, grunt bump and plugin.json update.
 - Never pull or rebase release back to master. The commit tagged "ReleaseT0" should never appear on master.
+
+= Releasing to the Grafana plugins repository
+
+- In this repo, release branch, edit plugin.json to update the version
+- Commit, push to release
+- On https://github.com/grafana/grafana-plugin-repository, add new version & SHA1 to repo.json
+- Submit PR
