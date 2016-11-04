@@ -32,11 +32,16 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.typeResources = {
+      "gauge": "gauges",
+      "counter": "counters",
+      "availability": "availability"
+    };
     var variables = new _variables.Variables(templateSrv);
     this.capabilitiesPromise = this.queryVersion().then(function (version) {
       return new _capabilities.Capabilities(version);
     });
-    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders());
+    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders(), this.typeResources);
   }
 
   _createClass(HawkularDatasource, [{
@@ -78,12 +83,24 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
   }, {
     key: 'testDatasource',
     value: function testDatasource() {
+      var _this2 = this;
+
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/status',
-        method: 'GET'
+        url: this.url + '/tenants',
+        method: 'GET',
+        headers: this.createHeaders()
       }).then(function (response) {
         if (response.status === 200) {
-          return { status: "success", message: "Data source is working", title: "Success" };
+          var tenantFound = response.data.filter && response.data.filter(function (t) {
+            return t.id === _this2.tenant;
+          }).length > 0;
+          if (tenantFound) {
+            return { status: "success", message: "Data source is working", title: "Success" };
+          } else {
+            return { status: "success", message: "Data source is working but the tenant could not be found", title: "Warning" };
+          }
+        } else {
+          return { status: "error", message: "Connection failed (" + response.status + ")", title: "Error" };
         }
       });
     }
@@ -119,7 +136,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
         return this.q.when([]);
       }
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/' + type + 's/tags/' + key + ':*',
+        url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
         method: 'GET',
         headers: this.createHeaders()
       }).then(function (result) {

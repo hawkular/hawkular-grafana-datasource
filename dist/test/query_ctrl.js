@@ -37,7 +37,7 @@ var HawkularDatasourceQueryCtrl = exports.HawkularDatasourceQueryCtrl = function
     });
 
     _this.listQueryBy = [{ value: 'ids', text: 'Search by name' }, { value: 'tags', text: 'Search by tags' }];
-    _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }];
+    _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }, { value: 'availability', text: 'Availability' }];
     _this.seriesAggFns = [{ value: 'none', text: 'None' }, { value: 'sum', text: 'Sum' }, { value: 'avg', text: 'Average' }];
     _this.timeAggFns = [{ value: 'avg', text: 'Average' }, { value: 'min', text: 'Min' }, { value: 'max', text: 'Max' }, { value: 'live', text: 'Live' }];
 
@@ -109,6 +109,10 @@ var HawkularDatasourceQueryCtrl = exports.HawkularDatasourceQueryCtrl = function
   }, {
     key: 'onChangeInternal',
     value: function onChangeInternal() {
+      if (this.target.type == 'availability') {
+        // Disable multiple series aggregation
+        this.target.seriesAggFn = this.seriesAggFns[0].value;
+      }
       this.panelCtrl.refresh(); // Asks the panel to refresh data.
     }
   }]);

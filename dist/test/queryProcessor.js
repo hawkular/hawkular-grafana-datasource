@@ -9,7 +9,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var QueryProcessor = exports.QueryProcessor = function () {
-  function QueryProcessor(q, backendSrv, variables, capabilities, url, baseHeaders) {
+  function QueryProcessor(q, backendSrv, variables, capabilities, url, baseHeaders, typeResources) {
     _classCallCheck(this, QueryProcessor);
 
     this.q = q;
@@ -18,6 +18,13 @@ var QueryProcessor = exports.QueryProcessor = function () {
     this.capabilities = capabilities;
     this.url = url;
     this.baseHeaders = baseHeaders;
+    this.typeResources = typeResources;
+    this.numericMapping = function (point) {
+      return [point.value, point.timestamp];
+    };
+    this.availMapping = function (point) {
+      return [point.value == 'up' ? 1 : 0, point.timestamp];
+    };
   }
 
   _createClass(QueryProcessor, [{
@@ -87,7 +94,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
     value: function rawQuery(target, postData) {
       var _this3 = this;
 
-      var uri = [target.type + 's', // gauges or counters
+      var uri = [this.typeResources[target.type], // gauges or counters
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'];
       var url = this.url + '/' + uri.join('/');
@@ -107,7 +114,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
       var _this4 = this;
 
       return this.q.all(metricIds.map(function (metric) {
-        var uri = [target.type + 's', // gauges or counters
+        var uri = [_this4.typeResources[target.type], // gauges, counters or availability
         encodeURIComponent(metric).replace('+', '%20'), // metric name
         'data'];
         var url = _this4.url + '/' + uri.join('/');
@@ -128,13 +135,13 @@ var QueryProcessor = exports.QueryProcessor = function () {
   }, {
     key: 'processRawResponse',
     value: function processRawResponse(target, data) {
+      var _this5 = this;
+
       return data.map(function (timeSerie) {
         return {
           refId: target.refId,
           target: timeSerie.id,
-          datapoints: timeSerie.data.map(function (point) {
-            return [point.value, point.timestamp];
-          })
+          datapoints: timeSerie.data.map(target.type == 'availability' ? _this5.availMapping : _this5.numericMapping)
         };
       });
     }
@@ -142,17 +149,17 @@ var QueryProcessor = exports.QueryProcessor = function () {
     key: 'processRawResponseLegacy',
     value: function processRawResponseLegacy(target, metric, data) {
       var datapoints;
-      if (!target.rate) {
-        datapoints = _.map(data, function (point) {
-          return [point.value, point.timestamp];
-        });
+      if (target.type == 'availability') {
+        datapoints = data.map(this.availMapping);
+      } else if (!target.rate) {
+        datapoints = data.map(this.numericMapping);
       } else {
         var sortedData = data.sort(function (p1, p2) {
           return p1.timestamp - p2.timestamp;
         });
         datapoints = _.chain(sortedData).zip(sortedData.slice(1)).filter(function (pair) {
           return pair[1] // Exclude the last pair
-          && (target.type == 'gauge' || pair[0].value <= pair[1].value); // Exclude counter resets
+          && (target.type != 'counter' || pair[0].value <= pair[1].value); // Exclude counter resets
         }).map(function (pair) {
           var point1 = pair[0],
               point2 = pair[1];
@@ -172,7 +179,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
   }, {
     key: 'singleStatQuery',
     value: function singleStatQuery(target, postData) {
-      var _this5 = this;
+      var _this6 = this;
 
       // Query for singlestat => we just ask for a single bucket
       // But because of that we need to override Grafana behaviour, and manage ourselves the min/max/avg/etc. selection
@@ -190,7 +197,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
           return bucket.max;
         };
       } // no else case. "live" case was handled before
-      var url = this.url + '/' + target.type + 's/stats/query';
+      var url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
       delete postData.order;
       postData.buckets = 1;
       postData.stacked = target.seriesAggFn === 'sum';
@@ -200,7 +207,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
         method: 'POST',
         headers: this.baseHeaders
       }).then(function (response) {
-        return _this5.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
+        return _this6.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
       });
     }
   }, {
@@ -217,9 +224,9 @@ var QueryProcessor = exports.QueryProcessor = function () {
   }, {
     key: 'singleStatLiveQuery',
     value: function singleStatLiveQuery(target, postData) {
-      var _this6 = this;
+      var _this7 = this;
 
-      var uri = [target.type + 's', // gauges or counters
+      var uri = [this.typeResources[target.type], // gauges, counters or availability
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'];
       var url = this.url + '/' + uri.join('/');
@@ -231,7 +238,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
         method: 'POST',
         headers: this.baseHeaders
       }).then(function (response) {
-        return _this6.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
+        return _this7.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
       });
     }
   }, {
