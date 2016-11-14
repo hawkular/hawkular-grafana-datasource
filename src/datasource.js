@@ -60,9 +60,7 @@ export class HawkularDatasource {
       method: 'GET',
       headers: this.createHeaders()
     }).then(response => {
-      if (response.status === 200) {
-        return { status: "success", message: "Data source is working, some metrics were found", title: "Success" };
-      } else if (response.status === 204) {
+      if (response.status === 200 || response.status === 204) {
         return { status: "success", message: "Data source is working", title: "Success" };
       } else {
         return { status: "error", message: "Connection failed (" + response.status + ")", title: "Error" };
