@@ -2,6 +2,7 @@ node_modules
 npm-debug.log
 
 dist/
+docker/hawkular-grafana-datasource-release/
 
 .idea/
 *.iml
