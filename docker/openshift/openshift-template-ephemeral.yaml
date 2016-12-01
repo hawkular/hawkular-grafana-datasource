@@ -1,0 +1,115 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  labels:
+    app: hawkular-grafana-ephemeral
+    group: org.hawkular
+  name: hawkular-grafana-ephemeral
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: hawkular-grafana-ephemeral
+      group: org.hawkular
+    name: hawkular-grafana
+  spec:
+    ports:
+    - name: 3000-tcp
+      port: 3000
+      protocol: TCP
+    selector:
+      app: hawkular-grafana-ephemeral
+      deploymentconfig: hawkular-grafana
+      group: org.hawkular
+- apiVersion: v1
+  kind: Route
+  metadata:
+    labels:
+      app: hawkular-grafana-ephemeral
+      group: org.hawkular
+    name: hawkular-grafana
+  spec:
+    to:
+      kind: Service
+      name: hawkular-grafana
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    labels:
+      app: hawkular-grafana-ephemeral
+      group: org.hawkular
+    name: hawkular-grafana
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      app: hawkular-grafana-ephemeral
+      group: org.hawkular
+    name: hawkular-grafana
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: hawkular-grafana:latest
+    source:
+      contextDir: docker
+      git:
+        uri: https://github.com/hawkular/hawkular-grafana-datasource.git
+      type: Git
+    strategy:
+      dockerStrategy:
+        from:
+          kind: DockerImage
+          name: centos:7
+      type: Docker
+    triggers:
+    - type: ConfigChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: hawkular-grafana-ephemeral
+      group: org.hawkular
+    name: hawkular-grafana
+  spec:
+    replicas: 1
+    selector:
+      app: hawkular-grafana-ephemeral
+    strategy:
+      rollingParams:
+        timeoutSeconds: 10800
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/container.hawkular-grafana.image.entrypoint: '["/run.sh"]'
+        labels:
+          app: hawkular-grafana-ephemeral
+          group: org.hawkular
+      spec:
+        containers:
+        - env:
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          image: hawkular-grafana:latest
+          imagePullPolicy: Always
+          name: hawkular-grafana
+          ports:
+          - containerPort: 3000
+            name: http
+            protocol: TCP
+        restartPolicy: Always
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - hawkular-grafana
+        from:
+          kind: ImageStreamTag
+          name: hawkular-grafana:latest
+      type: ImageChange
