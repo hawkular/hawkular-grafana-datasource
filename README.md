@@ -22,7 +22,9 @@ Openshift-Metrics users must provide an authentication token.
 
 ### Queries
 
-When adding a Graph panel, the Metrics tab allows you fetch _Gauges_, _Counters_ and _Availability_ metrics in Hawkular. You can either search by metric id or by tag.
+When adding a Graph panel, the Metrics tab allows you fetch _Gauges_, _Counters_ and _Availability_ metrics in Hawkular. You can either search by metric id or by tag, assuming your version of hawkular-metrics is at least 0.20.0. Prior versions only allow searching by id.
+
+> To know your version of hawkular-metrics, check the "status" endpoint. E.g. `http://myhost:8080/hawkular/metrics/status`
 
 When searching by id, you must provide the exact metric id (or use variables, as discussed later).
 
