@@ -71,3 +71,35 @@ Once you have set some variables, you can use them in graph queries: either for 
 ## Installing from sources
 
 Additional information on installing from sources can be found on [hawkular.org](http://www.hawkular.org/hawkular-clients/grafana/docs/quickstart-guide/).
+
+## Troubleshooting
+
+### Grafana fails to establish a connection or get data from hawkular
+
+* Check the URL: `[host]/hawkular/metrics`. Make sure there's no ending slash. When you open up this URL in a browser you should see the Hawkular logo, the installed version and a mention that the service is started.
+
+* Make sure the credentials or token match your installation. In general, if you installed a **standalone hawkular-metrics** server without any specific configuration you probably don't have any authentication information to provide. If you installed **hawkular-services** using its [installation guide](http://www.hawkular.org/hawkular-services/docs/installation-guide/) you will probably have to fill-in the basic auth fields. If you are using **Hawkular from OpenShift**, you have to provide a Bearer token in the `Token` field. Tokens can be [generated temporarily](https://docs.openshift.com/enterprise/3.1/architecture/additional_concepts/authentication.html) (go to `[OpenShift host]/oauth/token/request`) or from a [Service account](https://docs.openshift.com/container-platform/3.3/rest_api/index.html#rest-api-serviceaccount-tokens) in OpenShift.
+
+* Check the javascript debugging tool of your browser. If you see an error mentioning issues with CORS, switch to `proxy` mode in the datasource configuration.
+
+### I can't query by tag, the option is not displayed
+
+Querying by tag was introduced before the plugin was properly versioned, so if you have a version >= 1.0.2 you should have it. However it is only enabled when Grafana talks to hawkular-metrics >= 0.20.0. To check your version of hawkular-metrics just open its status page in a browser (`[host]/hawkular/metrics` or `[host]/hawkular/metrics/status`).
+
+### Connection is OK but I can't get any metric
+
+Make sure the tenant you've configured is exactly the same than the one used to insert data. Beware that it is case sensitive. If you have any doubt about the actual presence of data in Hawkular, you can confirm with a `curl` command, for instance:
+
+```bash
+curl -u myUsername:myPassword \
+  -X GET "http://myserver/hawkular/metrics/gauges/mymetric/raw" \
+  -H "Content-Type: application/json" -H "Hawkular-Tenant: myTenant"`
+```
+
+More about the REST API: http://www.hawkular.org/docs/rest/rest-metrics.html
+
+Also note that in Hawkular, data has a retention period of 7 days by default ([it can be configured](http://www.hawkular.org/hawkular-metrics/docs/user-guide/#_data_retention_and_removal)). So if no data has been produced since that time, you won't be able to see anything.
+
+### I'm running Hawkular in OpenShift, connection is OK but I can't get any metric
+
+Check your version of hawkular-metrics (`[host]/hawkular/metrics` or `[host]/hawkular/metrics/status`). Prior to 0.16.0, metric names containing slashes, like in OpenShift, were unfortunately not showing up in Grafana. You can consider [upgrading metrics](https://docs.openshift.org/latest/install_config/upgrading/manual_upgrades.html#manual-upgrading-cluster-metrics).
