@@ -102,4 +102,4 @@ Also note that in Hawkular, data has a retention period of 7 days by default ([i
 
 ### I'm running Hawkular in OpenShift, connection is OK but I can't get any metric
 
-Check your version of hawkular-metrics (`[host]/hawkular/metrics` or `[host]/hawkular/metrics/status`). Prior to 0.16.0, metric names containing slashes, like in OpenShift, were unfortunately not showing up in Grafana.
+Check your version of hawkular-metrics (`[host]/hawkular/metrics` or `[host]/hawkular/metrics/status`). Prior to 0.16.0, metric names containing slashes, like in OpenShift, were unfortunately not showing up in Grafana. You can consider [upgrading metrics](https://docs.openshift.org/latest/install_config/upgrading/manual_upgrades.html#manual-upgrading-cluster-metrics).
