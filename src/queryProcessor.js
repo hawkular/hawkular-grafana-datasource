@@ -208,12 +208,12 @@ export class QueryProcessor {
     if (latestPoints.length === 0) {
       datapoints = [];
     } else {
-      datapoints = [reduceFunc(latestPoints.map(dp => dp.value)), latestPoints[0].timestamp];
+      datapoints = [[reduceFunc(latestPoints.map(dp => dp.value)), latestPoints[0].timestamp]];
     }
     return [{
       refId: target.refId,
       target: "Aggregate",
-      datapoints: [datapoints]
+      datapoints: datapoints
     }];
   }
 }

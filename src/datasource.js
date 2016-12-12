@@ -56,17 +56,12 @@ export class HawkularDatasource {
 
   testDatasource() {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/tenants',
+      url: this.url + '/metrics',
       method: 'GET',
       headers: this.createHeaders()
     }).then(response => {
-      if (response.status === 200) {
-        let tenantFound = response.data.filter && response.data.filter(t => t.id === this.tenant).length > 0;
-        if (tenantFound) {
-          return { status: "success", message: "Data source is working", title: "Success" };
-        } else {
-          return { status: "success", message: "Data source is working but the tenant could not be found", title: "Warning" };
-        }
+      if (response.status === 200 || response.status === 204) {
+        return { status: "success", message: "Data source is working", title: "Success" };
       } else {
         return { status: "error", message: "Connection failed (" + response.status + ")", title: "Error" };
       }
