@@ -83,22 +83,13 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
   }, {
     key: 'testDatasource',
     value: function testDatasource() {
-      var _this2 = this;
-
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/tenants',
+        url: this.url + '/metrics',
         method: 'GET',
         headers: this.createHeaders()
       }).then(function (response) {
-        if (response.status === 200) {
-          var tenantFound = response.data.filter && response.data.filter(function (t) {
-            return t.id === _this2.tenant;
-          }).length > 0;
-          if (tenantFound) {
-            return { status: "success", message: "Data source is working", title: "Success" };
-          } else {
-            return { status: "success", message: "Data source is working but the tenant could not be found", title: "Warning" };
-          }
+        if (response.status === 200 || response.status === 204) {
+          return { status: "success", message: "Data source is working", title: "Success" };
         } else {
           return { status: "error", message: "Connection failed (" + response.status + ")", title: "Error" };
         }

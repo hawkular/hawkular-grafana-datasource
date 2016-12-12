@@ -291,14 +291,14 @@ System.register([], function (_export, _context) {
             if (latestPoints.length === 0) {
               datapoints = [];
             } else {
-              datapoints = [reduceFunc(latestPoints.map(function (dp) {
+              datapoints = [[reduceFunc(latestPoints.map(function (dp) {
                 return dp.value;
-              })), latestPoints[0].timestamp];
+              })), latestPoints[0].timestamp]];
             }
             return [{
               refId: target.refId,
               target: "Aggregate",
-              datapoints: [datapoints]
+              datapoints: datapoints
             }];
           }
         }]);
