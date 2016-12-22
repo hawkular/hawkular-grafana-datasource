@@ -1,12 +1,12 @@
 export class QueryProcessor {
 
-  constructor(q, backendSrv, variables, capabilities, url, baseHeaders, typeResources) {
+  constructor(q, backendSrv, variables, capabilities, url, headers, typeResources) {
     this.q = q;
     this.backendSrv = backendSrv;
     this.variables = variables;
     this.capabilities = capabilities;
     this.url = url;
-    this.baseHeaders = baseHeaders;
+    this.headers = headers;
     this.typeResources = typeResources;
     this.numericMapping = point => [point.value, point.timestamp];
     this.availMapping = point => [point.value == 'up' ? 1 : 0, point.timestamp];
@@ -80,7 +80,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.baseHeaders
+      headers: this.headers
     }).then(response => this.processRawResponse(target, response.status == 200 ? response.data : []));
   }
 
@@ -99,7 +99,7 @@ export class QueryProcessor {
           end: range.to.valueOf()
         },
         method: 'GET',
-        headers: this.baseHeaders
+        headers: this.headers
       }).then(response => this.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []));
     }));
   }
@@ -164,7 +164,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.baseHeaders
+      headers: this.headers
     }).then(response => this.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []));
   }
 
@@ -191,7 +191,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.baseHeaders
+      headers: this.headers
     }).then(response => this.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []));
   }
 
