@@ -17,8 +17,6 @@ export class HawkularDatasource {
     };
     if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
       this.headers['Authorization'] = instanceSettings.basicAuth;
-    } else if (typeof instanceSettings.jsonData.username === 'string' && instanceSettings.jsonData.username.length > 0) {
-      this.headers['Authorization'] = 'Basic ' + window.btoa(instanceSettings.jsonData.username + ':' + instanceSettings.jsonData.password);
     } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
       this.headers['Authorization'] = 'Bearer ' + instanceSettings.jsonData.token;
     }
