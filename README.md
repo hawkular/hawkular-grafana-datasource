@@ -18,6 +18,8 @@ Select the tenant. On Hawkular servers, use `hawkular`.
 
 Openshift-Metrics users must provide an authentication token.
 
+Note that if you configure both Basic Authentication and a Token, only Basic Authentication will be effective.
+
 ## Usage
 
 ### Queries

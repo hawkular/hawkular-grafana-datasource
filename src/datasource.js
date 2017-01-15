@@ -9,10 +9,17 @@ export class HawkularDatasource {
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
-    this.tenant = instanceSettings.jsonData.tenant;
-    this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.headers = {
+      'Content-Type': 'application/json',
+      'Hawkular-Tenant': instanceSettings.jsonData.tenant
+    };
+    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
+      this.headers['Authorization'] = instanceSettings.basicAuth;
+    } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
+      this.headers['Authorization'] = 'Bearer ' + instanceSettings.jsonData.token;
+    }
     this.typeResources = {
       "gauge": "gauges",
       "counter": "counters",
@@ -21,7 +28,7 @@ export class HawkularDatasource {
     let variables = new Variables(templateSrv);
     this.capabilitiesPromise = this.queryVersion()
       .then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders(), this.typeResources);
+    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
   }
 
   query(options) {
@@ -43,22 +50,11 @@ export class HawkularDatasource {
     });
   }
 
-  createHeaders() {
-    var headers = {
-      'Content-Type': 'application/json',
-      'Hawkular-Tenant': this.tenant
-    };
-    if (typeof this.token === 'string' && this.token.length > 0) {
-      headers.Authorization = 'Bearer ' + this.token;
-    }
-    return headers;
-  }
-
   testDatasource() {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics',
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(response => {
       if (response.status === 200 || response.status === 204) {
         return { status: "success", message: "Data source is working", title: "Success" };
@@ -82,7 +78,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics?type=' + target.type,
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
       return _.map(result.data, metric => {
         return {text: metric.id, value: metric.id};
@@ -98,7 +94,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
       if (result.data.hasOwnProperty(key)) {
         return [' *'].concat(result.data[key]).map(value => {
@@ -124,7 +120,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics' + params,
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
       return _.map(result.data, metric => {
         return {text: metric.id, value: metric.id};
@@ -136,7 +132,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics/tags/' + pattern,
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
       var flatTags = [];
       if (result.data) {
