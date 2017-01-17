@@ -568,4 +568,68 @@ describe('HawkularDatasource', function () {
       expect(result[1].text).to.equal("stop");
     }).then(v => done(), err => done(err));
   });
+
+  it('should get tags suggestions', function (done) {
+    ctx.backendSrv.datasourceRequest = function(request) {
+      var parser = document.createElement('a');
+      parser.href = request.url;
+      let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'tags', 'host:*']);
+
+      return ctx.$q.when({
+        status: 200,
+        data: {
+          'host': ['cartago', 'rio']
+        }
+      });
+    };
+
+    ctx.ds.suggestTags('gauge', 'host').then(function(result) {
+      expect(result).to.have.length(3);
+      expect(result[0]).to.deep.equal({ text: ' *', value: ' *' });
+      expect(result[1]).to.deep.equal({ text: 'cartago', value: 'cartago' });
+      expect(result[2]).to.deep.equal({ text: 'rio', value: 'rio' });
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should get no suggestions on unknown tag', function (done) {
+    ctx.backendSrv.datasourceRequest = function(request) {
+      var parser = document.createElement('a');
+      parser.href = request.url;
+      let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'tags', 'host:*']);
+      return ctx.$q.when({
+        status: 204,
+        data: {}
+      });
+    };
+    ctx.ds.suggestTags('gauge', 'host').then(function(result) {
+      expect(result).to.have.length(0);
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should get tag keys suggestions', function (done) {
+    ctx.backendSrv.datasourceRequest = function(request) {
+      var parser = document.createElement('a');
+      parser.href = request.url;
+      let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
+      expect(pathElements).to.have.length(4);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['metrics', 'tags']);
+      return ctx.$q.when({
+        status: 200,
+        data: ['host', 'app']
+      });
+    };
+
+    ctx.ds.suggestTagKeys().then(function(result) {
+      expect(result).to.have.length(2);
+      expect(result[0]).to.deep.equal({ text: 'host', value: 'host' });
+      expect(result[1]).to.deep.equal({ text: 'app', value: 'app' });
+    }).then(v => done(), err => done(err));
+  });
 });

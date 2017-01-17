@@ -12,9 +12,11 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
 
     this.queryByTagCapability = false;
     this.statsPostCapability = false;
+    this.fetchAllTagsCapability = false;
     this.datasource.getCapabilities().then(caps => {
       this.queryByTagCapability = caps.QUERY_BY_TAGS;
       this.statsPostCapability = caps.QUERY_STATS_POST_ENDPOINTS;
+      this.fetchAllTagsCapability = caps.FETCH_ALL_TAGS;
     });
 
     this.metricTypes = [
@@ -54,13 +56,23 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
 
   getTagsSegments(segment, $index) {
     if (segment.type === 'plus-button') {
-      return this.$q.when([]);
+      return this.getTagKeys();
     } else if (segment.type === 'key')  {
-      return this.$q.when([angular.copy(this.removeTagsSegment)]);
+      return this.getTagKeys()
+          .then(keys => [angular.copy(this.removeTagsSegment)].concat(keys));
     } else if (segment.type === 'value')  {
       var key = this.tagsSegments[$index-2].value;
       return this.datasource.suggestTags(this.target.type, key)
         .then(this.uiSegmentSrv.transformToSegments(false));
+    }
+  }
+
+  getTagKeys() {
+    if (this.fetchAllTagsCapability) {
+      return this.datasource.suggestTagKeys()
+        .then(this.uiSegmentSrv.transformToSegments(false));
+    } else {
+      return this.$q.when([]);
     }
   }
 
