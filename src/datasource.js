@@ -80,9 +80,11 @@ export class HawkularDatasource {
       method: 'GET',
       headers: this.headers
     }).then(result => {
-      return _.map(result.data, metric => {
-        return {text: metric.id, value: metric.id};
-      });
+      return result.data.map(m => m.id)
+        .sort()
+        .map(id => {
+          return {text: id, value: id};
+        });
     });
   }
 
