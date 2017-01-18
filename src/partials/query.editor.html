@@ -5,16 +5,15 @@
 				<option ng-repeat="type in ctrl.metricTypes" value="{{type.value}}">{{type.text}}</option>
 			</select>
 		</div>
-		<div class="gf-form">
-			<select ng-show="ctrl.queryByTagCapability" class="gf-form-input" ng-model="ctrl.target.queryBy" ng-change="ctrl.onChangeInternal()">
-				<option ng-repeat="q in ctrl.listQueryBy" value="{{q.value}}">{{q.text}}</option>
-			</select>
-		</div>
-		<div class="gf-form" ng-if="ctrl.target.queryBy === 'ids'">
-			<metric-segment-model property="ctrl.target.target" get-options="ctrl.getOptions()" on-change="ctrl.onChangeInternal()" css-class="max-width-30"></metric-segment-model>
-		</div>
-		<div class="gf-form" ng-if="ctrl.target.queryBy === 'tags'">
+		<div class="gf-form" ng-show="ctrl.queryByTagCapability">
+			<label class="gf-form-label">Tags</label>
 			<metric-segment ng-repeat="segment in ctrl.tagsSegments" segment="segment" get-options="ctrl.getTagsSegments(segment, $index)" on-change="ctrl.tagsSegmentChanged(segment, $index)"></metric-segment>
+		</div>
+	</div>
+	<div class="gf-form-inline">
+		<div class="gf-form">
+			<label class="gf-form-label">Metric name</label>
+			<metric-segment-model property="ctrl.target.id" get-options="ctrl.getMetricOptions()" on-change="ctrl.onChangeInternal()" css-class="max-width-30"></metric-segment-model>
 		</div>
 		<gf-form-switch ng-if="ctrl.target.type !== 'availability'" class="gf-form" label="Rate" checked="ctrl.target.rate" switch-class="max-width-6" on-change="ctrl.onChangeInternal()"></gf-form-switch>
 	</div>

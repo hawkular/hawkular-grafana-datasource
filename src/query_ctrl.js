@@ -17,10 +17,6 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       this.statsPostCapability = caps.QUERY_STATS_POST_ENDPOINTS;
     });
 
-    this.listQueryBy = [
-      {value: 'ids', text: 'Search by name'},
-      {value: 'tags', text: 'Search by tags'}
-    ];
     this.metricTypes = [
       {value: 'gauge', text: 'Gauge'},
       {value: 'counter', text: 'Counter'},
@@ -38,9 +34,8 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       {value: 'live', text: 'Live'}
     ];
 
-    this.target.queryBy = this.target.queryBy || this.listQueryBy[0].value;
     this.target.type = this.target.type || this.metricTypes[0].value;
-    this.target.target = this.target.target || 'select metric';
+    this.target.id = this.target.id || 'select metric';
     this.target.rate = this.target.rate === true;
     this.target.tags = this.target.tags || [];
     this.target.seriesAggFn = this.target.seriesAggFn || this.seriesAggFns[0].value;
@@ -94,7 +89,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     }
   }
 
-  getOptions() {
+  getMetricOptions() {
     return this.datasource.suggestQueries(this.target)
       .then(this.uiSegmentSrv.transformToSegments(false));
       // Options have to be transformed by uiSegmentSrv to be usable by metric-segment-model directive

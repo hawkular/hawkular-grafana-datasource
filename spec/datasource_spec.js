@@ -57,15 +57,13 @@ describe('HawkularDatasource', function () {
         to: 30
       },
       targets: [{
-        target: 'memory',
+        id: 'memory',
         type: 'gauge',
-        rate: false,
-        queryBy: 'ids'
+        rate: false
       }, {
-        target: 'packets',
+        id: 'packets',
         type: 'counter',
-        rate: true,
-        queryBy: 'ids'
+        rate: true
       }]
     };
 
@@ -125,10 +123,9 @@ describe('HawkularDatasource', function () {
         to: 30
       },
       targets: [{
-        target: '$app/memory',
+        id: '$app/memory',
         type: 'gauge',
-        rate: false,
-        queryBy: 'ids'
+        rate: false
       }]
     };
 
@@ -185,8 +182,7 @@ describe('HawkularDatasource', function () {
           {name: 'host', value: 'myhost'}
         ],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -246,8 +242,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'max',
         tags: [{name: 'type', value: 'memory'}],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -294,8 +289,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'avg',
         tags: [{name: 'type', value: 'memory'}],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -342,8 +336,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'live',
         tags: [{name: 'type', value: 'memory'}],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -391,8 +384,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'live',
         tags: [{name: 'type', value: 'memory'}],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -436,9 +428,8 @@ describe('HawkularDatasource', function () {
         to: 30
       },
       targets: [{
-        target: 'myapp/health',
-        type: 'availability',
-        queryBy: 'ids'
+        id: 'myapp/health',
+        type: 'availability'
       }]
     };
 

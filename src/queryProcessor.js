@@ -1,10 +1,11 @@
 export class QueryProcessor {
 
-  constructor(q, backendSrv, variables, capabilities, url, headers, typeResources) {
+  constructor(q, backendSrv, variables, capabilities, tagsProcessor, url, headers, typeResources) {
     this.q = q;
     this.backendSrv = backendSrv;
     this.variables = variables;
     this.capabilities = capabilities;
+    this.tagsProcessor = tagsProcessor;
     this.url = url;
     this.headers = headers;
     this.typeResources = typeResources;
@@ -20,8 +21,8 @@ export class QueryProcessor {
         order: 'ASC'
       };
       var multipleMetrics = true;
-      if (target.queryBy === 'ids') {
-        let metricIds = this.variables.resolve(target.target, options);
+      if (target.id) {
+        let metricIds = this.variables.resolve(target.id, options);
         if (caps.QUERY_POST_ENDPOINTS) {
           if (!target.seriesAggFn || target.seriesAggFn === 'none') {
             postData.ids = metricIds;
@@ -41,7 +42,7 @@ export class QueryProcessor {
         if (target.tags.length === 0) {
           return this.q.when([]);
         }
-        postData.tags = this.hawkularFormatTags(target.tags, options);
+        postData.tags = this.tagsProcessor.toHawkular(target.tags, options);
         if (!target.seriesAggFn || target.seriesAggFn === 'none') {
           return this.rawQuery(target, postData);
         } else if (target.timeAggFn == 'live') {
@@ -53,19 +54,6 @@ export class QueryProcessor {
         }
       }
     });
-  }
-
-  hawkularFormatTags(tags, options) {
-    return tags.map(tag => {
-      var value;
-      if (tag.value === ' *') {
-        // '*' character get a special treatment in grafana so we had to use ' *' instead
-        value = '*';
-      } else {
-        value = this.variables.resolve(tag.value, options).join('|');
-      }
-      return tag.name + ':' + value;
-    }).join(',');
   }
 
   rawQuery(target, postData) {
