@@ -1,5 +1,8 @@
 import {QueryCtrl} from 'app/plugins/sdk';
 import './css/query-editor.css!'
+import {Capabilities} from './capabilities';
+import {KeyValuePairTagsController} from './keyValuePairTagsController';
+import {TagsQLController} from './tagsQLController';
 
 export class HawkularDatasourceQueryCtrl extends QueryCtrl {
 
@@ -10,13 +13,16 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.uiSegmentSrv = uiSegmentSrv;
     this.$q = $q;
 
-    this.queryByTagCapability = false;
-    this.statsPostCapability = false;
-    this.fetchAllTagsCapability = false;
+    let self = this;
+    this.caps = new Capabilities("");
     this.datasource.getCapabilities().then(caps => {
-      this.queryByTagCapability = caps.QUERY_BY_TAGS;
-      this.statsPostCapability = caps.QUERY_STATS_POST_ENDPOINTS;
-      this.fetchAllTagsCapability = caps.FETCH_ALL_TAGS;
+      self.caps = caps;
+      if (caps.TAGS_QUERY_LANGUAGE) {
+        self.tagsController = new TagsQLController(uiSegmentSrv, self.datasource, $q, function() { return self.target; });
+      } else {
+        self.tagsController = new KeyValuePairTagsController(uiSegmentSrv, self.datasource, $q, caps.FETCH_ALL_TAGS, function() { return self.target; });
+      }
+      self.tagsSegments = self.tagsController.initTagsSegments();
     });
 
     this.metricTypes = [
@@ -37,72 +43,25 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     ];
 
     this.target.type = this.target.type || this.metricTypes[0].value;
-    this.target.id = this.target.id || 'select metric';
+    this.target.id = this.target.id || '-- none --';
     this.target.rate = this.target.rate === true;
     this.target.tags = this.target.tags || [];
     this.target.seriesAggFn = this.target.seriesAggFn || this.seriesAggFns[0].value;
     this.target.timeAggFn = this.target.timeAggFn || this.timeAggFns[0].value;
-
-    this.tagsSegments = _.reduce(this.target.tags, function(list, tag) {
-      list.push(uiSegmentSrv.newKey(tag.name));
-      list.push(uiSegmentSrv.newOperator(':'));
-      list.push(uiSegmentSrv.newKeyValue(tag.value));
-      list.push(uiSegmentSrv.newOperator(','));
-      return list;
-    }, []);
-    this.tagsSegments.push(uiSegmentSrv.newPlusButton());
-    this.removeTagsSegment = uiSegmentSrv.newSegment({fake: true, value: '-- Remove tag --'});
   }
 
   getTagsSegments(segment, $index) {
-    if (segment.type === 'plus-button') {
-      return this.getTagKeys();
-    } else if (segment.type === 'key')  {
-      return this.getTagKeys()
-          .then(keys => [angular.copy(this.removeTagsSegment)].concat(keys));
-    } else if (segment.type === 'value')  {
-      var key = this.tagsSegments[$index-2].value;
-      return this.datasource.suggestTags(this.target.type, key)
-        .then(this.uiSegmentSrv.transformToSegments(false));
-    }
+    return this.tagsController.getTagsSegments(this.tagsSegments, segment, $index);
   }
 
-  getTagKeys() {
-    if (this.fetchAllTagsCapability) {
-      return this.datasource.suggestTagKeys()
-        .then(this.uiSegmentSrv.transformToSegments(false));
-    } else {
-      return this.$q.when([]);
-    }
-  }
-
-  tagsSegmentChanged(segment, index) {
-    if (segment.value === this.removeTagsSegment.value) {
-      this.tagsSegments.splice(index, 4);
-    } else if (segment.type === 'plus-button') {
-      this.tagsSegments.splice(index, 1, this.uiSegmentSrv.newOperator(','));
-      this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newKeyValue(' *'));
-      this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newOperator(':'));
-      this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newKey(segment.value));
-      this.tagsSegments.push(this.uiSegmentSrv.newPlusButton());
-    } else {
-      this.tagsSegments[index] = segment;
-    }
-    this.tagsToModel();
+  tagsSegmentChanged(segment, $index) {
+    this.tagsController.tagsSegmentChanged(this.tagsSegments, segment, $index);
     this.onChangeInternal();
-  }
-
-  tagsToModel() {
-    this.target.tags = [];
-    for (var i = 0; i < this.tagsSegments.length - 2; i += 4) {
-      let key = this.tagsSegments[i].value;
-      let val = this.tagsSegments[i+2].fake ? '*' : (this.tagsSegments[i+2].value || '*');
-      this.target.tags.push({name: key, value: val});
-    }
   }
 
   getMetricOptions() {
     return this.datasource.suggestQueries(this.target)
+      .then(metrics => [{value: '-- none --', text: '-- none --'}].concat(metrics))
       .then(this.uiSegmentSrv.transformToSegments(false));
       // Options have to be transformed by uiSegmentSrv to be usable by metric-segment-model directive
   }

@@ -38,7 +38,7 @@ export class HawkularDatasource {
     let validTargets = options.targets
       .filter(target => !target.hide)
       .map(target => {
-        if (target.id === 'select metric') {
+        if (target.id === '-- none --') {
           delete target.id;
         }
         return target;
