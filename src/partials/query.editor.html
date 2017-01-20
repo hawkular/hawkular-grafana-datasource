@@ -1,4 +1,4 @@
-<query-editor-row query-ctrl="ctrl" class="generic-datasource-query-row">
+<query-editor-row query-ctrl="ctrl" class="generic-datasource-query-row" has-text-edit-mode="true">
 	<div class="gf-form-inline">
 		<div class="gf-form">
 			<select class="gf-form-input" ng-model="ctrl.target.type" ng-change="ctrl.onChangeInternal()">
@@ -7,7 +7,8 @@
 		</div>
 		<div class="gf-form" ng-show="ctrl.caps.QUERY_BY_TAGS">
 			<label class="gf-form-label query-keyword fix-query-keyword">Tags</label>
-			<metric-segment ng-repeat="segment in ctrl.tagsSegments" segment="segment" get-options="ctrl.getTagsSegments(segment, $index)" on-change="ctrl.tagsSegmentChanged(segment, $index)"></metric-segment>
+			<input ng-if="ctrl.target.rawTagsQuery" type="text" class="gf-form-input max-width-30" ng-model="ctrl.target.tagsQL" placeholder="Use tag query language" spellcheck="false" ng-blur="ctrl.onChangeInternal()"></input>
+			<metric-segment ng-if="!ctrl.target.rawTagsQuery" ng-repeat="segment in ctrl.tagsSegments" segment="segment" get-options="ctrl.getTagsSegments(segment, $index)" on-change="ctrl.tagsSegmentChanged(segment, $index)"></metric-segment>
 		</div>
 	</div>
 	<div class="gf-form-inline">

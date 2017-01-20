@@ -22,7 +22,7 @@ export class Capabilities {
         this.FETCH_ALL_TAGS = false;
       }
       if (major == 0 && minor < 24) {
-        this.TAGS_QUERY_LANGUAGE = false;
+//        this.TAGS_QUERY_LANGUAGE = false;
       }
     }
   }

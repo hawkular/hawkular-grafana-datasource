@@ -1,8 +1,8 @@
 import {QueryCtrl} from 'app/plugins/sdk';
 import './css/query-editor.css!'
 import {Capabilities} from './capabilities';
-import {KeyValuePairTagsController} from './keyValuePairTagsController';
-import {TagsQLController} from './tagsQLController';
+import {TagsKVPairsController} from './tagsKVPairsController';
+import {TagsQLController, stringToSegments} from './tagsQLController';
 
 export class HawkularDatasourceQueryCtrl extends QueryCtrl {
 
@@ -20,7 +20,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       if (caps.TAGS_QUERY_LANGUAGE) {
         self.tagsController = new TagsQLController(uiSegmentSrv, self.datasource, $q, function() { return self.target; });
       } else {
-        self.tagsController = new KeyValuePairTagsController(uiSegmentSrv, self.datasource, $q, caps.FETCH_ALL_TAGS, function() { return self.target; });
+        self.tagsController = new TagsKVPairsController(uiSegmentSrv, self.datasource, $q, caps.FETCH_ALL_TAGS, function() { return self.target; });
       }
       self.tagsSegments = self.tagsController.initTagsSegments();
     });
@@ -46,6 +46,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.target.id = this.target.id || '-- none --';
     this.target.rate = this.target.rate === true;
     this.target.tags = this.target.tags || [];
+    this.target.tagsQL = this.target.tagsQL || "";
     this.target.seriesAggFn = this.target.seriesAggFn || this.seriesAggFns[0].value;
     this.target.timeAggFn = this.target.timeAggFn || this.timeAggFns[0].value;
   }
@@ -72,6 +73,23 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       this.target.seriesAggFn = this.seriesAggFns[0].value;
     }
     this.panelCtrl.refresh(); // Asks the panel to refresh data.
+  }
+
+  toggleEditorMode() {
+    if (this.caps.TAGS_QUERY_LANGUAGE) {
+      this.target.rawTagsQuery = !this.target.rawTagsQuery;
+      if (!this.target.rawTagsQuery) {
+        try {
+          this.tagsSegments = stringToSegments(this.target.tagsQL);
+          this.tagsSegments.push(this.uiSegmentSrv.newPlusButton());
+        } catch (err) {
+          this.target.rawTagsQuery = true;
+          console.log('Cannot parse query: ' + err);
+        }
+      }
+    } else {
+      this.target.rawTagsQuery = false;
+    }
   }
 }
 

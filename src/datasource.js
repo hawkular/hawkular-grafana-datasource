@@ -1,8 +1,8 @@
 import _ from "lodash";
 import {Variables} from './variables';
 import {Capabilities} from './capabilities';
-import {TagsProcessor} from './tagsProcessor';
 import {QueryProcessor} from './queryProcessor';
+import {modelToString as tagsModelToString} from './tagsKVPairsController';
 
 export class HawkularDatasource {
 
@@ -26,12 +26,9 @@ export class HawkularDatasource {
       "counter": "counters",
       "availability": "availability"
     };
-    let variables = new Variables(templateSrv);
-    this.capabilitiesPromise = this.queryVersion()
-      .then(version => new Capabilities(version));
-    this.tagsProcessor = new TagsProcessor(variables);
-    this.queryProcessor = new QueryProcessor($q, backendSrv, variables,
-       this.capabilitiesPromise, this.tagsProcessor, this.url, this.headers, this.typeResources);
+    this.variables = new Variables(templateSrv);
+    this.capabilitiesPromise = this.queryVersion().then(version => new Capabilities(version));
+    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
   }
 
   query(options) {
@@ -43,7 +40,9 @@ export class HawkularDatasource {
         }
         return target;
       })
-      .filter(target => target.id !== undefined || (target.tags !== undefined && target.tags.length > 0));
+      .filter(target => target.id !== undefined
+         || (target.tags !== undefined && target.tags.length > 0)
+         || (target.tagsQL !== undefined && target.tagsQL.length > 0));
 
     if (validTargets.length === 0) {
       return this.q.when({data: []});
@@ -113,15 +112,18 @@ export class HawkularDatasource {
 
   suggestQueries(target) {
     var url = this.url + '/metrics?type=' + target.type;
-    if (target.tags && target.tags.length > 0) {
-      url += "&tags=" + this.tagsProcessor.toHawkular(target.tags, {});
+    if (target.tagsQL && target.tagsQL.length > 0) {
+      // TODO: tagsQL endpoint
+    } else if (target.tags && target.tags.length > 0) {
+      url += "&tags=" + tagsModelToString(target.tags, this.variables, {});
     }
     return this.backendSrv.datasourceRequest({
       url: url,
       method: 'GET',
       headers: this.headers
-    }).then(result => {
-      return result.data.map(m => m.id)
+    }).then(response => response.status == 200 ? response.data : [])
+    .then(result => {
+      return result.map(m => m.id)
         .sort()
         .map(id => {
           return {text: id, value: id};
@@ -152,8 +154,9 @@ export class HawkularDatasource {
       url: this.url + '/metrics/tags',
       method: 'GET',
       headers: this.headers
-    }).then(result => {
-      return result.data.map(key => {
+    }).then(response => response.status == 200 ? response.data : [])
+    .then(result => {
+      return result.map(key => {
         return {text: key, value: key};
       });
     });

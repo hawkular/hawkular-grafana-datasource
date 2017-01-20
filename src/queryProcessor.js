@@ -1,11 +1,12 @@
+import {modelToString as tagsModelToString} from './tagsKVPairsController';
+
 export class QueryProcessor {
 
-  constructor(q, backendSrv, variables, capabilities, tagsProcessor, url, headers, typeResources) {
+  constructor(q, backendSrv, variables, capabilities, url, headers, typeResources) {
     this.q = q;
     this.backendSrv = backendSrv;
     this.variables = variables;
     this.capabilities = capabilities;
-    this.tagsProcessor = tagsProcessor;
     this.url = url;
     this.headers = headers;
     this.typeResources = typeResources;
@@ -39,10 +40,11 @@ export class QueryProcessor {
           return this.rawQueryLegacy(target, options.range, metricIds);
         }
       } else {
-        if (target.tags.length === 0) {
+        if (target.tags.length === 0 && target.tagsQL.length === 0) {
           return this.q.when([]);
         }
-        postData.tags = this.tagsProcessor.toHawkular(target.tags, options);
+        // TODO: use tags QL endpoint for target.tagsQL
+        postData.tags = tagsModelToString(target.tags, this.variables, options);
         if (!target.seriesAggFn || target.seriesAggFn === 'none') {
           return this.rawQuery(target, postData);
         } else if (target.timeAggFn == 'live') {
