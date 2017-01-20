@@ -47,6 +47,16 @@ describe('TagsQL', function() {
     done();
   });
 
+  it('should convert string to segments allowing spaces everywhere', function(done) {
+    let result = stringToSegments("  pod  !=  'unknown pod  '  ", segmentFactory);
+    expect(result).to.deep.equal([
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: '!=' },
+      { type: 'value', value: 'unknown pod  ' }
+    ]);
+    done();
+  });
+
   it('should convert string to segments with single-quoted value having spaces', function(done) {
     let result = stringToSegments("hostname EXISTS AND pod != 'unknown pod'", segmentFactory);
     expect(result).to.deep.equal([
@@ -102,6 +112,58 @@ describe('TagsQL', function() {
       { type: 'key', value: 'pod' },
       { type: 'operator', value: '!=' },
       { type: 'value', value: 'unknown' }
+    ]);
+    done();
+  });
+
+  it('should convert segment with enumeration to string', function(done) {
+    let segments = [
+      { type: 'key', value: 'hostname' },
+      { type: 'operator', value: 'EXISTS' },
+      { type: 'condition', value: 'AND' },
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: 'NOT IN' },
+      { type: 'value', value: 'abc' },
+      { type: 'value', value: 'def' }
+    ];
+    let result = segmentsToString(segments);
+    expect(result).to.deep.equal("hostname EXISTS AND pod NOT IN ['abc','def']");
+    done();
+  });
+
+  it('should convert string with enumeration to segments', function(done) {
+    let result = stringToSegments("hostname EXISTS AND pod NOT IN ['abc','def']", segmentFactory);
+    expect(result).to.deep.equal([
+      { type: 'key', value: 'hostname' },
+      { type: 'operator', value: 'EXISTS' },
+      { type: 'condition', value: 'AND' },
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: 'NOT IN' },
+      { type: 'value', value: 'abc' },
+      { type: 'value', value: 'def' }
+    ]);
+    done();
+  });
+
+  it('should convert segment with enumeration only to string', function(done) {
+    let segments = [
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: 'IN' },
+      { type: 'value', value: 'abc' },
+      { type: 'value', value: 'def' }
+    ];
+    let result = segmentsToString(segments);
+    expect(result).to.deep.equal("pod IN ['abc','def']");
+    done();
+  });
+
+  it('should convert string with enumeration only with double quotes and spaces to segments', function(done) {
+    let result = stringToSegments('  pod  IN [  "abc",  "def ghi"  ]  ', segmentFactory);
+    expect(result).to.deep.equal([
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: 'IN' },
+      { type: 'value', value: 'abc' },
+      { type: 'value', value: 'def ghi' }
     ]);
     done();
   });

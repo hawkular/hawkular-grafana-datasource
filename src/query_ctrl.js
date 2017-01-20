@@ -80,8 +80,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       this.target.rawTagsQuery = !this.target.rawTagsQuery;
       if (!this.target.rawTagsQuery) {
         try {
-          this.tagsSegments = stringToSegments(this.target.tagsQL);
-          this.tagsSegments.push(this.uiSegmentSrv.newPlusButton());
+          this.tagsSegments = this.tagsController.initTagsSegments();
         } catch (err) {
           this.target.rawTagsQuery = true;
           console.log('Cannot parse query: ' + err);
