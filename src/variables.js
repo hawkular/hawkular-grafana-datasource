@@ -24,6 +24,15 @@ export class Variables {
     return resolved;
   }
 
+  resolveToString(target, options) {
+    let self = this;
+    let variables = options.scopedVars || this.templateSrv.variables;
+    return target.replace(/\$\w+/g, function(name) {
+      let values = self.getVarValues(name, variables);
+      return values.map(v => "'" + v + "'").join(',');
+    });
+  }
+
   getVarValues(name, variables) {
     let values = this.templateSrv.replace(name, variables);
     // result might be in like "{id1,id2,id3}" (as string)
@@ -31,5 +40,9 @@ export class Variables {
         return values.substring(1, values.length-1).split(',');
     }
     return [values];
+  }
+
+  exists(name) {
+    return this.templateSrv.variableExists(name);
   }
 }

@@ -31,7 +31,7 @@ describe('TagsQL', function() {
       { type: 'value', value: 'unknown' }
     ];
     let result = segmentsToString(segments);
-    expect(result).to.deep.equal("hostname EXISTS AND pod != 'unknown'");
+    expect(result).to.deep.equal("hostname EXISTS AND pod != unknown");
     done();
   });
 
@@ -52,7 +52,7 @@ describe('TagsQL', function() {
     expect(result).to.deep.equal([
       { type: 'key', value: 'pod' },
       { type: 'operator', value: '!=' },
-      { type: 'value', value: 'unknown pod  ' }
+      { type: 'value', value: "'unknown pod  '" }
     ]);
     done();
   });
@@ -65,20 +65,7 @@ describe('TagsQL', function() {
       { type: 'condition', value: 'AND' },
       { type: 'key', value: 'pod' },
       { type: 'operator', value: '!=' },
-      { type: 'value', value: 'unknown pod' }
-    ]);
-    done();
-  });
-
-  it('should convert string to segments with double-quoted value having spaces', function(done) {
-    let result = stringToSegments('hostname NOT EXISTS OR pod = "unknown pod"', segmentFactory);
-    expect(result).to.deep.equal([
-      { type: 'key', value: 'hostname' },
-      { type: 'operator', value: 'NOT EXISTS' },
-      { type: 'condition', value: 'OR' },
-      { type: 'key', value: 'pod' },
-      { type: 'operator', value: '=' },
-      { type: 'value', value: 'unknown pod' }
+      { type: 'value', value: "'unknown pod'" }
     ]);
     done();
   });
@@ -127,7 +114,32 @@ describe('TagsQL', function() {
       { type: 'value', value: 'def' }
     ];
     let result = segmentsToString(segments);
-    expect(result).to.deep.equal("hostname EXISTS AND pod NOT IN ['abc','def']");
+    expect(result).to.deep.equal("hostname EXISTS AND pod NOT IN [abc,def]");
+    done();
+  });
+
+  it('should convert segment with enumeration with single quotes to string', function(done) {
+    let segments = [
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: 'IN' },
+      { type: 'value', value: "'a b c'" }
+    ];
+    let result = segmentsToString(segments);
+    expect(result).to.deep.equal("pod IN ['a b c']");
+    done();
+  });
+
+  it('should use quotes when non-alphadecimal characters are found except for variables', function(done) {
+    let segments = [
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: 'IN' },
+      { type: 'value', value: "a b c" },
+      { type: 'value', value: "def" },
+      { type: 'value', value: "+33/10" },
+      { type: 'value', value: "$variable" }
+    ];
+    let result = segmentsToString(segments);
+    expect(result).to.deep.equal("pod IN ['a b c',def,'+33/10',$variable]");
     done();
   });
 
@@ -139,8 +151,8 @@ describe('TagsQL', function() {
       { type: 'condition', value: 'AND' },
       { type: 'key', value: 'pod' },
       { type: 'operator', value: 'NOT IN' },
-      { type: 'value', value: 'abc' },
-      { type: 'value', value: 'def' }
+      { type: 'value', value: "'abc'" },
+      { type: 'value', value: "'def'" }
     ]);
     done();
   });
@@ -153,17 +165,17 @@ describe('TagsQL', function() {
       { type: 'value', value: 'def' }
     ];
     let result = segmentsToString(segments);
-    expect(result).to.deep.equal("pod IN ['abc','def']");
+    expect(result).to.deep.equal("pod IN [abc,def]");
     done();
   });
 
-  it('should convert string with enumeration only with double quotes and spaces to segments', function(done) {
-    let result = stringToSegments('  pod  IN [  "abc",  "def ghi"  ]  ', segmentFactory);
+  it('should convert string with enumeration only with quotes and spaces to segments', function(done) {
+    let result = stringToSegments("  pod  IN [  'abc' ,  'def ghi'  ]  ", segmentFactory);
     expect(result).to.deep.equal([
       { type: 'key', value: 'pod' },
       { type: 'operator', value: 'IN' },
-      { type: 'value', value: 'abc' },
-      { type: 'value', value: 'def ghi' }
+      { type: 'value', value: "'abc'" },
+      { type: 'value', value: "'def ghi'" }
     ]);
     done();
   });
@@ -175,6 +187,15 @@ describe('TagsQL', function() {
       { name: "pod", value: "unknown" }
     ]);
     expect(result).to.deep.equal("hostname EXISTS AND app='aloha' AND pod='unknown'");
+    done();
+  });
+
+  it('should convert from key-value pairs with variable', function(done) {
+    let result = convertFromKVPairs([
+      { name: "hostname", value: "*" },
+      { name: "app", value: "$app" }
+    ]);
+    expect(result).to.deep.equal("hostname EXISTS AND app IN [$app]");
     done();
   });
 });

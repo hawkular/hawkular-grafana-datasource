@@ -113,7 +113,7 @@ export class HawkularDatasource {
   suggestQueries(target) {
     var url = this.url + '/metrics?type=' + target.type;
     if (target.tagsQL && target.tagsQL.length > 0) {
-      // TODO: tagsQL endpoint
+      url += "&tagsQuery=" + this.variables.resolveToString(target.tagsQL, {});
     } else if (target.tags && target.tags.length > 0) {
       url += "&tags=" + tagsModelToString(target.tags, this.variables, {});
     }

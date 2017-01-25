@@ -47,4 +47,18 @@ describe('Variables', function () {
     ]);
     done();
   });
+
+  it('should resolve to string', function (done) {
+    ctx.templateSrv.replace = function(target, vars) {
+      if (target === '$app') {
+        return "{app_1,app_2}";
+      }
+      if (target === '$container') {
+        return "{1234,5678,90}";
+      }
+    };
+    let resolved = ctx.variables.resolveToString("app IN [$app] AND container NOT IN ['a', $container, 'z']", {});
+    expect(resolved).to.deep.equal("app IN ['app_1','app_2'] AND container NOT IN ['a', '1234','5678','90', 'z']");
+    done();
+  });
 });

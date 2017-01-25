@@ -103,7 +103,14 @@ export class TagsQLController {
         index--;
       }
       while (nextSegment < segments.length) {
-        if (segments[nextSegment].type === 'condition' || segments[nextSegment].type === 'plus-button') {
+        if (segments[nextSegment].type === 'plus-button') {
+          break;
+        }
+        if (segments[nextSegment].type === 'condition') {
+          if (index === 0) {
+            // Don't start query with a AND or OR, remove it.
+            nextSegment++;
+          }
           break;
         }
         nextSegment++;
@@ -178,34 +185,48 @@ export function convertFromKVPairs(kvTags) {
     if (tag.value === '*' || tag.value === ' *') {
       return tag.name + " EXISTS";
     }
+    if (tag.value.charAt(0) === '$') {
+      // it's a variable
+      return tag.name + " IN [" + tag.value + "]";
+    }
     return tag.name + "='" + tag.value + "'";
   }).join(' AND ');
+}
+
+function valueToString(value) {
+  if ((value.charAt(0) === "'" && value.charAt(value.length-1) === "'")
+      || value.match(/^\$?[a-zA-Z0-9]+$/g)) {
+    // Variable, simple literal or already single-quoted => keep as is
+    return value;
+  }
+  return "'" + value + "'";
 }
 
 export function segmentsToString(segments) {
   var strTags = "";
   var i = 0;
   while (i < segments.length) {
+    if (segments[i].type === 'plus-button') {
+      i++;
+      continue;
+    }
+    if (i != 0) {
+      // AND/OR
+      strTags += " " + segments[i++].value + " ";
+    }
     strTags += segments[i++].value + " ";
     let op = segments[i++].value;
     strTags += op;
     if (op === '=' || op === '!=') {
-      strTags += " '" + segments[i++].value + "'";
+      strTags += " " + valueToString(segments[i++].value);
     } else if (op === 'IN' || op === 'NOT IN') {
       strTags += " [";
       var sep = "";
       while (i < segments.length && segments[i].type === 'value') {
-        strTags += sep + "'" + segments[i++].value + "'";
+        strTags += sep + valueToString(segments[i++].value);
         sep = ",";
       }
       strTags += "]";
-    }
-    if (i < segments.length) {
-      if (segments[i].type === 'plus-button') {
-        break;
-      }
-      // AND/OR
-      strTags += " " + segments[i++].value + " ";
     }
   }
   return strTags;
@@ -289,12 +310,9 @@ function readRelationalOp(strTags, cursor) {
 
 function readTagValue(strTags, cursor) {
   let first = skipWhile(strTags, cursor, c => c === ' ');
-  if (strTags.charAt(first) === '"') {
-    cursor = skipWhile(strTags, first+1, c => c !== '"');
-    return { cursor: cursor+1, value: strTags.substr(first+1, cursor - first - 1) };
-  } else if (strTags.charAt(first) === "'") {
-    cursor = skipWhile(strTags, first+1, c => c !== "'");
-    return { cursor: cursor+1, value: strTags.substr(first+1, cursor - first - 1) };
+  if (strTags.charAt(first) === "'") {
+    cursor = skipWhile(strTags, first+1, c => c !== "'") + 1;
+    return { cursor: cursor, value: strTags.substr(first, cursor - first) };
   }
   cursor = skipWhile(strTags, first, c => c !== ' ' && c !== ',');
   return { cursor: cursor, value: strTags.substr(first, cursor - first) };

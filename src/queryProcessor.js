@@ -40,16 +40,24 @@ export class QueryProcessor {
           return this.rawQueryLegacy(target, options.range, metricIds);
         }
       } else {
-        if (target.tags.length === 0 && target.tagsQL.length === 0) {
-          return this.q.when([]);
+        if (caps.TAGS_QUERY_LANGUAGE) {
+          if (target.tagsQL !== undefined && target.tagsQL.length > 0) {
+            postData.tagsQuery = this.variables.resolveToString(target.tagsQL, options);
+          } else {
+            return this.q.when([]);
+          }
+        } else {
+          if (target.tags !== undefined && target.tags.length > 0) {
+            postData.tags = tagsModelToString(target.tags, this.variables, options);
+          } else {
+            return this.q.when([]);
+          }
         }
-        // TODO: use tags QL endpoint for target.tagsQL
-        postData.tags = tagsModelToString(target.tags, this.variables, options);
         if (!target.seriesAggFn || target.seriesAggFn === 'none') {
           return this.rawQuery(target, postData);
         } else if (target.timeAggFn == 'live') {
           // Need to change postData
-          return this.singleStatLiveQuery(target, {tags: postData.tags, limit: 1});
+          return this.singleStatLiveQuery(target, {tags: postData.tags, tagsQuery: postData.tagsQuery, limit: 1});
         } else {
           // Need to perform multiple series aggregation
           return this.singleStatQuery(target, postData);
@@ -60,7 +68,7 @@ export class QueryProcessor {
 
   rawQuery(target, postData) {
     let uri = [
-      this.typeResources[target.type],            // gauges or counters
+      this.typeResources[target.type],   // gauges or counters
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'
     ];

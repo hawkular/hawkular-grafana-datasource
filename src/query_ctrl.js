@@ -2,7 +2,7 @@ import {QueryCtrl} from 'app/plugins/sdk';
 import './css/query-editor.css!'
 import {Capabilities} from './capabilities';
 import {TagsKVPairsController} from './tagsKVPairsController';
-import {TagsQLController, stringToSegments} from './tagsQLController';
+import {TagsQLController} from './tagsQLController';
 
 export class HawkularDatasourceQueryCtrl extends QueryCtrl {
 
