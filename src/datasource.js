@@ -69,12 +69,37 @@ export class HawkularDatasource {
 
   annotationQuery(options) {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/annotations',
+      url: this.url + '/strings/raw/query',
+      data: {
+        start: options.range.from.valueOf(),
+        end: options.range.to.valueOf(),
+        order: 'ASC',
+        ids: [options.annotation.query]
+      },
       method: 'POST',
-      data: options
-    }).then(result => {
-      return result.data;
-    });
+      headers: this.headers
+    }).then(response => response.status == 200 ? response.data[0].data : [])
+    .then(data => data.map(dp => {
+      var annot = {
+        annotation: options.annotation,
+        time: dp.timestamp,
+        title: options.annotation.name,
+        tags: undefined,
+        text: dp.value
+      };
+      if (dp.tags) {
+        var tags = [];
+        for (var key in dp.tags) {
+          if (dp.tags.hasOwnProperty(key)) {
+            tags.push(dp.tags[key].replace(' ', '_'));
+          }
+        }
+        if (tags.length > 0) {
+          annot.tags = tags.join(' ');
+        }
+      }
+      return annot;
+    }));
   }
 
   suggestQueries(target) {
