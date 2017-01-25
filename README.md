@@ -76,7 +76,7 @@ Annotations are available (since version 1.0.7) through the use of _'string'_ me
 
 1. Setup an annotation query in Grafana. In _'Query'_, put the name of a _'string'_ metric you want to use to gather these annotations.
 
-![Annotation setup](docs/images/annotation-setup.png)
+![Annotation setup](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/annotation-setup.png)
 
 2. Post any event (ie. string + timestamp) to some string metric.
 
@@ -90,7 +90,7 @@ Example, JSON posted on [the Hawkular's REST API](http://www.hawkular.org/hawkul
 
 3. Check your charts:
 
-![Annotation in chart](docs/images/annotation.png)
+![Annotation in chart](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/annotation.png)
 
 ## Installing from sources
 
