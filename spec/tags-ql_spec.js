@@ -24,14 +24,14 @@ describe('TagsQL', function() {
   it('should convert segments to string', function(done) {
     let segments = [
       { type: 'key', value: 'hostname' },
-      { type: 'operator', value: 'EXISTS' },
+      { type: 'operator', value: 'exists' },
       { type: 'condition', value: 'AND' },
       { type: 'key', value: 'pod' },
       { type: 'operator', value: '!=' },
       { type: 'value', value: 'unknown' }
     ];
     let result = segmentsToString(segments);
-    expect(result).to.deep.equal("hostname EXISTS AND pod != unknown");
+    expect(result).to.deep.equal("hostname AND pod!=unknown");
     done();
   });
 
@@ -58,10 +58,10 @@ describe('TagsQL', function() {
   });
 
   it('should convert string to segments with single-quoted value having spaces', function(done) {
-    let result = stringToSegments("hostname EXISTS AND pod != 'unknown pod'", segmentFactory);
+    let result = stringToSegments("NOT hostname AND pod!='unknown pod'", segmentFactory);
     expect(result).to.deep.equal([
       { type: 'key', value: 'hostname' },
-      { type: 'operator', value: 'EXISTS' },
+      { type: 'operator', value: 'doesn\'t exist' },
       { type: 'condition', value: 'AND' },
       { type: 'key', value: 'pod' },
       { type: 'operator', value: '!=' },
@@ -71,14 +71,23 @@ describe('TagsQL', function() {
   });
 
   it('should convert string to segments with unquoted value', function(done) {
-    let result = stringToSegments("pod != unknown AND hostname EXISTS", segmentFactory);
+    let result = stringToSegments("pod != unknown AND hostname  ", segmentFactory);
     expect(result).to.deep.equal([
       { type: 'key', value: 'pod' },
       { type: 'operator', value: '!=' },
       { type: 'value', value: 'unknown' },
       { type: 'condition', value: 'AND' },
       { type: 'key', value: 'hostname' },
-      { type: 'operator', value: 'EXISTS' }
+      { type: 'operator', value: 'exists' }
+    ]);
+    done();
+  });
+
+  it('should convert string to segments with single value alone', function(done) {
+    let result = stringToSegments("hostname", segmentFactory);
+    expect(result).to.deep.equal([
+      { type: 'key', value: 'hostname' },
+      { type: 'operator', value: 'exists' }
     ]);
     done();
   });
@@ -106,22 +115,22 @@ describe('TagsQL', function() {
   it('should convert segment with enumeration to string', function(done) {
     let segments = [
       { type: 'key', value: 'hostname' },
-      { type: 'operator', value: 'EXISTS' },
+      { type: 'operator', value: 'exists' },
       { type: 'condition', value: 'AND' },
       { type: 'key', value: 'pod' },
-      { type: 'operator', value: 'NOT IN' },
+      { type: 'operator', value: 'is not in' },
       { type: 'value', value: 'abc' },
       { type: 'value', value: 'def' }
     ];
     let result = segmentsToString(segments);
-    expect(result).to.deep.equal("hostname EXISTS AND pod NOT IN [abc,def]");
+    expect(result).to.deep.equal("hostname AND pod NOT IN [abc,def]");
     done();
   });
 
   it('should convert segment with enumeration with single quotes to string', function(done) {
     let segments = [
       { type: 'key', value: 'pod' },
-      { type: 'operator', value: 'IN' },
+      { type: 'operator', value: 'is in' },
       { type: 'value', value: "'a b c'" }
     ];
     let result = segmentsToString(segments);
@@ -132,7 +141,7 @@ describe('TagsQL', function() {
   it('should use quotes when non-alphadecimal characters are found except for variables', function(done) {
     let segments = [
       { type: 'key', value: 'pod' },
-      { type: 'operator', value: 'IN' },
+      { type: 'operator', value: 'is in' },
       { type: 'value', value: "a b c" },
       { type: 'value', value: "def" },
       { type: 'value', value: "+33/10" },
@@ -144,13 +153,13 @@ describe('TagsQL', function() {
   });
 
   it('should convert string with enumeration to segments', function(done) {
-    let result = stringToSegments("hostname EXISTS AND pod NOT IN ['abc','def']", segmentFactory);
+    let result = stringToSegments("hostname AND pod NOT IN ['abc','def']", segmentFactory);
     expect(result).to.deep.equal([
       { type: 'key', value: 'hostname' },
-      { type: 'operator', value: 'EXISTS' },
+      { type: 'operator', value: 'exists' },
       { type: 'condition', value: 'AND' },
       { type: 'key', value: 'pod' },
-      { type: 'operator', value: 'NOT IN' },
+      { type: 'operator', value: 'is not in' },
       { type: 'value', value: "'abc'" },
       { type: 'value', value: "'def'" }
     ]);
@@ -160,7 +169,7 @@ describe('TagsQL', function() {
   it('should convert segment with enumeration only to string', function(done) {
     let segments = [
       { type: 'key', value: 'pod' },
-      { type: 'operator', value: 'IN' },
+      { type: 'operator', value: 'is in' },
       { type: 'value', value: 'abc' },
       { type: 'value', value: 'def' }
     ];
@@ -173,7 +182,7 @@ describe('TagsQL', function() {
     let result = stringToSegments("  pod  IN [  'abc' ,  'def ghi'  ]  ", segmentFactory);
     expect(result).to.deep.equal([
       { type: 'key', value: 'pod' },
-      { type: 'operator', value: 'IN' },
+      { type: 'operator', value: 'is in' },
       { type: 'value', value: "'abc'" },
       { type: 'value', value: "'def ghi'" }
     ]);
@@ -186,7 +195,7 @@ describe('TagsQL', function() {
       { name: "app", value: "aloha" },
       { name: "pod", value: "unknown" }
     ]);
-    expect(result).to.deep.equal("hostname EXISTS AND app='aloha' AND pod='unknown'");
+    expect(result).to.deep.equal("hostname AND app='aloha' AND pod='unknown'");
     done();
   });
 
@@ -195,7 +204,7 @@ describe('TagsQL', function() {
       { name: "hostname", value: "*" },
       { name: "app", value: "$app" }
     ]);
-    expect(result).to.deep.equal("hostname EXISTS AND app IN [$app]");
+    expect(result).to.deep.equal("hostname AND app IN [$app]");
     done();
   });
 });

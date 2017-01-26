@@ -139,14 +139,10 @@ export class HawkularDatasource {
       url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
       method: 'GET',
       headers: this.headers
-    }).then(result => {
-      if (result.data.hasOwnProperty(key)) {
-        return [' *'].concat(result.data[key]).map(value => {
-          return {text: value, value: value};
-        });
-      }
-      return [];
-    });
+    }).then(result => result.data.hasOwnProperty(key) ? result.data[key] : [])
+    .then(tags => tags.map(tag => {
+      return {text: tag, value: tag};
+    }));
   }
 
   suggestTagKeys(type) {

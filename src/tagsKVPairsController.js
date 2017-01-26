@@ -28,6 +28,7 @@ export class TagsKVPairsController {
     } else if (segment.type === 'value')  {
       var key = segments[$index-2].value;
       return this.datasource.suggestTags(this.targetSupplier().type, key)
+        .then(tags => [{text: ' *', value: ' *'}].concat(tags))
         .then(this.uiSegmentSrv.transformToSegments(false));
     }
   }

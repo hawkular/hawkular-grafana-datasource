@@ -1,3 +1,13 @@
+// "Natural language" operators
+let OPERATOR_EQ = '=';
+let OPERATOR_NOTEQ = '!=';
+let OPERATOR_IN = 'is in';
+let OPERATOR_NOTIN = 'is not in';
+let OPERATOR_EXISTS = 'exists';
+let OPERATOR_NOTEXISTS = 'doesn\'t exist';
+let OPERATOR_AND = 'AND';
+let OPERATOR_OR = 'OR';
+
 export class TagsQLController {
 
   constructor(uiSegmentSrv, datasource, $q, targetSupplier)  {
@@ -20,7 +30,7 @@ export class TagsQLController {
     // Fix plus-button: add it at the end of each enumeration
     var isInEnum = false;
     for (var i = 0; i < segments.length; i++) {
-      if (segments[i].type === 'operator' && (segments[i].value === 'IN' || segments[i].value === 'NOT IN')) {
+      if (segments[i].type === 'operator' && (segments[i].value === OPERATOR_IN || segments[i].value === OPERATOR_NOTIN)) {
         isInEnum = true;
       } else if (isInEnum && segments[i].type !== 'value') {
         segments.splice(i, 0, this.uiSegmentSrv.newPlusButton());
@@ -33,10 +43,10 @@ export class TagsQLController {
   getTagsSegments(segments, segment, $index) {
     // Get suggestions for available values in a given segment
     if (segment.type === 'condition') {
-      return this.$q.when([this.uiSegmentSrv.newSegment('AND'), this.uiSegmentSrv.newSegment('OR')]);
+      return this.$q.when([this.uiSegmentSrv.newSegment(OPERATOR_AND), this.uiSegmentSrv.newSegment(OPERATOR_OR)]);
     }
     if (segment.type === 'operator') {
-      return this.$q.when(this.uiSegmentSrv.newOperators(['=', '!=', 'EXISTS', 'NOT EXISTS', 'IN', 'NOT IN']));
+      return this.$q.when(this.uiSegmentSrv.newOperators([OPERATOR_EQ, OPERATOR_NOTEQ, OPERATOR_EXISTS, OPERATOR_NOTEXISTS, OPERATOR_IN, OPERATOR_NOTIN]));
     }
     if (segment.type === 'plus-button') {
       // Find previous operator to know if we're in an enumeration
@@ -74,7 +84,7 @@ export class TagsQLController {
     var i = $index-1;
     while (i >= 0) {
       if (segments[i].type === 'operator') {
-        if (segments[i].value === 'IN' || segments[i].value === 'NOT IN') {
+        if (segments[i].value === OPERATOR_IN || segments[i].value === OPERATOR_NOTIN) {
           return i;
         }
         return -1;
@@ -132,18 +142,18 @@ export class TagsQLController {
         // Add a default model for tag: "<key> EXISTS"
         segments.splice(index, 0,
           this.uiSegmentSrv.newKey(segment.value),
-          this.uiSegmentSrv.newOperator('EXISTS'),
+          this.uiSegmentSrv.newOperator(OPERATOR_EXISTS),
           this.uiSegmentSrv.newPlusButton());
         if (index > 0) {
           // Add leading "AND"
-          segments.splice(index, 0, this.uiSegmentSrv.newCondition('AND'));
+          segments.splice(index, 0, this.uiSegmentSrv.newCondition(OPERATOR_AND));
         }
       }
     } else {
       if (segment.type === 'operator') {
         // Is there a change in number of operands?
-        let needOneRightOperand = segment.value === '=' || segment.value === '!=';
-        let isEnum = segment.value === 'IN' || segment.value === 'NOT IN';
+        let needOneRightOperand = segment.value === OPERATOR_EQ || segment.value === OPERATOR_NOTEQ;
+        let isEnum = segment.value === OPERATOR_IN || segment.value === OPERATOR_NOTIN;
         var currentRightOperands = 0;
         while (segments[index+currentRightOperands+1].type === 'value') {
           currentRightOperands++;
@@ -183,7 +193,7 @@ export function convertFromKVPairs(kvTags) {
   }
   return kvTags.map(tag => {
     if (tag.value === '*' || tag.value === ' *') {
-      return tag.name + " EXISTS";
+      return tag.name;
     }
     if (tag.value.charAt(0) === '$') {
       // it's a variable
@@ -214,22 +224,40 @@ export function segmentsToString(segments) {
       // AND/OR
       strTags += " " + segments[i++].value + " ";
     }
-    strTags += segments[i++].value + " ";
+    // Tag name
+    let tagName = segments[i++].value;
+    // Operator
     let op = segments[i++].value;
-    strTags += op;
-    if (op === '=' || op === '!=') {
-      strTags += " " + valueToString(segments[i++].value);
-    } else if (op === 'IN' || op === 'NOT IN') {
-      strTags += " [";
-      var sep = "";
-      while (i < segments.length && segments[i].type === 'value') {
-        strTags += sep + valueToString(segments[i++].value);
-        sep = ",";
-      }
-      strTags += "]";
+    if (op === OPERATOR_EQ || op === OPERATOR_NOTEQ) {
+      strTags += tagName + op + valueToString(segments[i++].value);
+    } else if (op === OPERATOR_EXISTS) {
+      strTags += tagName;
+    } else if (op === OPERATOR_NOTEXISTS) {
+      strTags += 'NOT ' + tagName;
+    } else if (op === OPERATOR_IN) {
+      let v = valuesToString(segments, i);
+      i = v.i;
+      strTags += tagName + ' IN [' + v.values + ']';
+    } else if (op === OPERATOR_NOTIN) {
+      let v = valuesToString(segments, i);
+      i = v.i;
+      strTags += tagName + ' NOT IN [' + v.values + ']';
     }
   }
   return strTags;
+}
+
+function valuesToString(segments, i) {
+  var values = "";
+  var sep = "";
+  while (i < segments.length && segments[i].type === 'value') {
+    values += sep + valueToString(segments[i++].value);
+    sep = ",";
+  }
+  return {
+    values: values,
+    i: i
+  };
 }
 
 export function stringToSegments(strTags, segmentFactory) {
@@ -245,21 +273,39 @@ export function stringToSegments(strTags, segmentFactory) {
       cursor = result.cursor;
       segments.push(segmentFactory.newCondition(result.value));
     }
-    result = readTagName(strTags, cursor);
+    result = readWord(strTags, cursor);
     cursor = result.cursor;
-    segments.push(segmentFactory.newKey(result.value));
-    result = readRelationalOp(strTags, cursor);
-    cursor = result.cursor;
-    segments.push(segmentFactory.newOperator(result.value));
-    if (result.value === '=' || result.value === '!=') {
-      result = readTagValue(strTags, cursor);
+    if (result.value.toUpperCase() === 'NOT') {
+      // Special case, 'not' keyword may be be read instead of tag name
+      result = readWord(strTags, cursor);
       cursor = result.cursor;
-      segments.push(segmentFactory.newKeyValue(result.value));
-    } else if (result.value === 'IN' || result.value === 'NOT IN') {
-      result = readEnumeration(strTags, cursor);
-      cursor = result.cursor;
-      for (let value of result.values) {
-        segments.push(segmentFactory.newKeyValue(value));
+      segments.push(segmentFactory.newKey(result.value));
+      segments.push(segmentFactory.newOperator(OPERATOR_NOTEXISTS));
+    } else {
+      // It's tag name
+      segments.push(segmentFactory.newKey(result.value));
+      // Check next word without increasing cursor: if it's a logical operator, we're on an "exists" operation
+      result = readWord(strTags, cursor);
+      let nextCursor = skipWhile(strTags, result.cursor, c => c === ' ');
+      if (nextCursor >= strTags.length || result.value === OPERATOR_AND || result.value === OPERATOR_OR) {
+        segments.push(segmentFactory.newOperator(OPERATOR_EXISTS));
+      } else {
+        // Relational operation
+        result = readRelationalOp(strTags, cursor);
+        cursor = result.cursor;
+        segments.push(segmentFactory.newOperator(result.value));
+        if (result.value === '=' || result.value === '!=') {
+          result = readWord(strTags, cursor);
+          cursor = result.cursor;
+          segments.push(segmentFactory.newKeyValue(result.value));
+        } else {
+          // Enumeration
+          result = readEnumeration(strTags, cursor);
+          cursor = result.cursor;
+          for (let value of result.values) {
+            segments.push(segmentFactory.newKeyValue(value));
+          }
+        }
       }
     }
     cursor = skipWhile(strTags, cursor, c => c === ' ');
@@ -270,62 +316,49 @@ export function stringToSegments(strTags, segmentFactory) {
 function readLogicalOp(strTags, cursor) {
   cursor = skipWhile(strTags, cursor, c => c === ' ');
   if (strTags.substr(cursor, 2).toUpperCase() === 'OR') {
-    return { cursor: cursor + 2, value: 'OR' };
+    return { cursor: cursor + 2, value: OPERATOR_OR };
   }
   if (strTags.substr(cursor, 3).toUpperCase() === 'AND') {
-    return { cursor: cursor + 3, value: 'AND' };
+    return { cursor: cursor + 3, value: OPERATOR_AND };
   }
   throw "Cannot parse tags string: logical operator expected near '" + strTags.substr(cursor, 15) + "'";
 }
 
-function readTagName(strTags, cursor) {
+function readWord(strTags, cursor) {
   cursor = skipWhile(strTags, cursor, c => c === ' ');
-  var first = cursor;
-  cursor = skipWhileNextNotIn(strTags, cursor, [' ', '=', '!=']);
-  return { cursor: cursor, value: strTags.substr(first, cursor - first) };
+  let remaining = strTags.substr(cursor);
+  if (remaining.charAt(0) === "'") {
+    let first = cursor;
+    cursor = skipWhile(strTags, first+1, c => c !== "'") + 1;
+    return { cursor: cursor, value: strTags.substr(first, cursor - first) };
+  }
+  let word = remaining.match(/^(\$?[a-zA-Z0-9]*)/)[0];
+  cursor += word.length;
+  return { cursor: cursor, value: word };
 }
 
 function readRelationalOp(strTags, cursor) {
   cursor = skipWhile(strTags, cursor, c => c === ' ');
   if (strTags.substr(cursor, 1).toUpperCase() === '=') {
-    return { cursor: cursor + 1, value: '=' };
+    return { cursor: cursor + 1, value: OPERATOR_EQ };
   }
   if (strTags.substr(cursor, 2).toUpperCase() === '!=') {
-    return { cursor: cursor + 2, value: '!=' };
-  }
-  if (strTags.substr(cursor, 6).toUpperCase() === 'EXISTS') {
-    return { cursor: cursor + 6, value: 'EXISTS' };
-  }
-  if (strTags.substr(cursor, 10).toUpperCase() === 'NOT EXISTS') {
-    return { cursor: cursor + 10, value: 'NOT EXISTS' };
+    return { cursor: cursor + 2, value: OPERATOR_NOTEQ };
   }
   if (strTags.substr(cursor, 2).toUpperCase() === 'IN') {
-    return { cursor: cursor + 2, value: 'IN' };
+    return { cursor: cursor + 2, value: OPERATOR_IN };
   }
   if (strTags.substr(cursor, 6).toUpperCase() === 'NOT IN') {
-    return { cursor: cursor + 6, value: 'NOT IN' };
+    return { cursor: cursor + 6, value: OPERATOR_NOTIN };
   }
   throw "Cannot parse tags string: relational operator expected near '" + strTags.substr(cursor, 15) + "'";
-}
-
-function readTagValue(strTags, cursor) {
-  let first = skipWhile(strTags, cursor, c => c === ' ');
-  if (strTags.charAt(first) === "'") {
-    cursor = skipWhile(strTags, first+1, c => c !== "'") + 1;
-    return { cursor: cursor, value: strTags.substr(first, cursor - first) };
-  }
-  cursor = skipWhile(strTags, first, c => c !== ' ' && c !== ',');
-  return { cursor: cursor, value: strTags.substr(first, cursor - first) };
 }
 
 function readEnumeration(strTags, cursor) {
   var values = [];
   cursor = skipWhile(strTags, cursor, c => c !== '[') + 1;
-  // let end = skipWhile(strTags, start, c => c !== ']') - 1;
-  // let enumStr = strTags.substr(start, end - start);
-  // cursor = 0;
   while (cursor < strTags.length) {
-    var result = readTagValue(strTags, cursor);
+    var result = readWord(strTags, cursor);
     values.push(result.value);
     cursor = skipWhile(strTags, result.cursor, c => c === ' ');
     if (strTags.charAt(cursor) === ']') {

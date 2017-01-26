@@ -587,10 +587,9 @@ describe('HawkularDatasource', function () {
     };
 
     ctx.ds.suggestTags('gauge', 'host').then(function(result) {
-      expect(result).to.have.length(3);
-      expect(result[0]).to.deep.equal({ text: ' *', value: ' *' });
-      expect(result[1]).to.deep.equal({ text: 'cartago', value: 'cartago' });
-      expect(result[2]).to.deep.equal({ text: 'rio', value: 'rio' });
+      expect(result).to.have.length(2);
+      expect(result[0]).to.deep.equal({ text: 'cartago', value: 'cartago' });
+      expect(result[1]).to.deep.equal({ text: 'rio', value: 'rio' });
     }).then(v => done(), err => done(err));
   });
 
