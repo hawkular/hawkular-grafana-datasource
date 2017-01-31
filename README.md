@@ -72,7 +72,7 @@ Once you have set some variables, you can use them in graph queries: either for 
 
 ### Annotations
 
-Annotations are available (since version 1.0.7) through the use of _'string'_ metrics in Hawkular. Here's how to proceed:
+Annotations are available through the use of _'string'_ metrics in Hawkular. It's a Grafana feature that allows to display custom events in timed charts. Here's how to proceed:
 
 1. Setup an annotation query in Grafana. In _'Query'_, put the name of a _'string'_ metric you want to use to gather these annotations.
 
