@@ -28,10 +28,17 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
-    this.tenant = instanceSettings.jsonData.tenant;
-    this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.headers = {
+      'Content-Type': 'application/json',
+      'Hawkular-Tenant': instanceSettings.jsonData.tenant
+    };
+    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
+      this.headers['Authorization'] = instanceSettings.basicAuth;
+    } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
+      this.headers['Authorization'] = 'Bearer ' + instanceSettings.jsonData.token;
+    }
     this.typeResources = {
       "gauge": "gauges",
       "counter": "counters",
@@ -41,7 +48,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     this.capabilitiesPromise = this.queryVersion().then(function (version) {
       return new _capabilities.Capabilities(version);
     });
-    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders(), this.typeResources);
+    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
   }
 
   _createClass(HawkularDatasource, [{
@@ -64,21 +71,11 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       });
 
       return this.q.all(promises).then(function (responses) {
-        var flatten = [].concat.apply([], responses);
+        var flatten = [].concat.apply([], responses).sort(function (m1, m2) {
+          return m1.target.localeCompare(m2.target);
+        });
         return { data: flatten };
       });
-    }
-  }, {
-    key: 'createHeaders',
-    value: function createHeaders() {
-      var headers = {
-        'Content-Type': 'application/json',
-        'Hawkular-Tenant': this.tenant
-      };
-      if (typeof this.token === 'string' && this.token.length > 0) {
-        headers.Authorization = 'Bearer ' + this.token;
-      }
-      return headers;
     }
   }, {
     key: 'testDatasource',
@@ -86,7 +83,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       return this.backendSrv.datasourceRequest({
         url: this.url + '/metrics',
         method: 'GET',
-        headers: this.createHeaders()
+        headers: this.headers
       }).then(function (response) {
         if (response.status === 200 || response.status === 204) {
           return { status: "success", message: "Data source is working", title: "Success" };
@@ -99,11 +96,39 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     key: 'annotationQuery',
     value: function annotationQuery(options) {
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/annotations',
+        url: this.url + '/strings/raw/query',
+        data: {
+          start: options.range.from.valueOf(),
+          end: options.range.to.valueOf(),
+          order: 'ASC',
+          ids: [options.annotation.query]
+        },
         method: 'POST',
-        data: options
-      }).then(function (result) {
-        return result.data;
+        headers: this.headers
+      }).then(function (response) {
+        return response.status == 200 ? response.data[0].data : [];
+      }).then(function (data) {
+        return data.map(function (dp) {
+          var annot = {
+            annotation: options.annotation,
+            time: dp.timestamp,
+            title: options.annotation.name,
+            tags: undefined,
+            text: dp.value
+          };
+          if (dp.tags) {
+            var tags = [];
+            for (var key in dp.tags) {
+              if (dp.tags.hasOwnProperty(key)) {
+                tags.push(dp.tags[key].replace(' ', '_'));
+              }
+            }
+            if (tags.length > 0) {
+              annot.tags = tags.join(' ');
+            }
+          }
+          return annot;
+        });
       });
     }
   }, {
@@ -112,10 +137,12 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       return this.backendSrv.datasourceRequest({
         url: this.url + '/metrics?type=' + target.type,
         method: 'GET',
-        headers: this.createHeaders()
+        headers: this.headers
       }).then(function (result) {
-        return _lodash2.default.map(result.data, function (metric) {
-          return { text: metric.id, value: metric.id };
+        return result.data.map(function (m) {
+          return m.id;
+        }).sort().map(function (id) {
+          return { text: id, value: id };
         });
       });
     }
@@ -129,7 +156,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       return this.backendSrv.datasourceRequest({
         url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
         method: 'GET',
-        headers: this.createHeaders()
+        headers: this.headers
       }).then(function (result) {
         if (result.data.hasOwnProperty(key)) {
           return [' *'].concat(result.data[key]).map(function (value) {
@@ -156,7 +183,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       return this.backendSrv.datasourceRequest({
         url: this.url + '/metrics' + params,
         method: 'GET',
-        headers: this.createHeaders()
+        headers: this.headers
       }).then(function (result) {
         return _lodash2.default.map(result.data, function (metric) {
           return { text: metric.id, value: metric.id };
@@ -169,7 +196,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       return this.backendSrv.datasourceRequest({
         url: this.url + '/metrics/tags/' + pattern,
         method: 'GET',
-        headers: this.createHeaders()
+        headers: this.headers
       }).then(function (result) {
         var flatTags = [];
         if (result.data) {

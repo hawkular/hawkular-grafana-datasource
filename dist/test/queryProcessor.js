@@ -9,7 +9,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var QueryProcessor = exports.QueryProcessor = function () {
-  function QueryProcessor(q, backendSrv, variables, capabilities, url, baseHeaders, typeResources) {
+  function QueryProcessor(q, backendSrv, variables, capabilities, url, headers, typeResources) {
     _classCallCheck(this, QueryProcessor);
 
     this.q = q;
@@ -17,7 +17,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
     this.variables = variables;
     this.capabilities = capabilities;
     this.url = url;
-    this.baseHeaders = baseHeaders;
+    this.headers = headers;
     this.typeResources = typeResources;
     this.numericMapping = function (point) {
       return [point.value, point.timestamp];
@@ -103,7 +103,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
         url: url,
         data: postData,
         method: 'POST',
-        headers: this.baseHeaders
+        headers: this.headers
       }).then(function (response) {
         return _this3.processRawResponse(target, response.status == 200 ? response.data : []);
       });
@@ -126,7 +126,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
             end: range.to.valueOf()
           },
           method: 'GET',
-          headers: _this4.baseHeaders
+          headers: _this4.headers
         }).then(function (response) {
           return _this4.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []);
         });
@@ -205,7 +205,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
         url: url,
         data: postData,
         method: 'POST',
-        headers: this.baseHeaders
+        headers: this.headers
       }).then(function (response) {
         return _this6.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
       });
@@ -236,7 +236,7 @@ var QueryProcessor = exports.QueryProcessor = function () {
         url: url,
         data: postData,
         method: 'POST',
-        headers: this.baseHeaders
+        headers: this.headers
       }).then(function (response) {
         return _this7.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
       });
