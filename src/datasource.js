@@ -9,10 +9,17 @@ export class HawkularDatasource {
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
-    this.tenant = instanceSettings.jsonData.tenant;
-    this.token = instanceSettings.jsonData.token;
     this.q = $q;
     this.backendSrv = backendSrv;
+    this.headers = {
+      'Content-Type': 'application/json',
+      'Hawkular-Tenant': instanceSettings.jsonData.tenant
+    };
+    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
+      this.headers['Authorization'] = instanceSettings.basicAuth;
+    } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
+      this.headers['Authorization'] = 'Bearer ' + instanceSettings.jsonData.token;
+    }
     this.typeResources = {
       "gauge": "gauges",
       "counter": "counters",
@@ -21,7 +28,7 @@ export class HawkularDatasource {
     let variables = new Variables(templateSrv);
     this.capabilitiesPromise = this.queryVersion()
       .then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.createHeaders(), this.typeResources);
+    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
   }
 
   query(options) {
@@ -38,27 +45,19 @@ export class HawkularDatasource {
     });
 
     return this.q.all(promises).then(responses => {
-      let flatten = [].concat.apply([], responses);
+      let flatten = [].concat.apply([], responses)
+        .sort(function(m1, m2) {
+          return m1.target.localeCompare(m2.target);
+        });
       return {data: flatten};
     });
-  }
-
-  createHeaders() {
-    var headers = {
-      'Content-Type': 'application/json',
-      'Hawkular-Tenant': this.tenant
-    };
-    if (typeof this.token === 'string' && this.token.length > 0) {
-      headers.Authorization = 'Bearer ' + this.token;
-    }
-    return headers;
   }
 
   testDatasource() {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics',
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(response => {
       if (response.status === 200 || response.status === 204) {
         return { status: "success", message: "Data source is working", title: "Success" };
@@ -70,23 +69,50 @@ export class HawkularDatasource {
 
   annotationQuery(options) {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/annotations',
+      url: this.url + '/strings/raw/query',
+      data: {
+        start: options.range.from.valueOf(),
+        end: options.range.to.valueOf(),
+        order: 'ASC',
+        ids: [options.annotation.query]
+      },
       method: 'POST',
-      data: options
-    }).then(result => {
-      return result.data;
-    });
+      headers: this.headers
+    }).then(response => response.status == 200 ? response.data[0].data : [])
+    .then(data => data.map(dp => {
+      var annot = {
+        annotation: options.annotation,
+        time: dp.timestamp,
+        title: options.annotation.name,
+        tags: undefined,
+        text: dp.value
+      };
+      if (dp.tags) {
+        var tags = [];
+        for (var key in dp.tags) {
+          if (dp.tags.hasOwnProperty(key)) {
+            tags.push(dp.tags[key].replace(' ', '_'));
+          }
+        }
+        if (tags.length > 0) {
+          annot.tags = tags.join(' ');
+        }
+      }
+      return annot;
+    }));
   }
 
   suggestQueries(target) {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics?type=' + target.type,
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
-      return _.map(result.data, metric => {
-        return {text: metric.id, value: metric.id};
-      });
+      return result.data.map(m => m.id)
+        .sort()
+        .map(id => {
+          return {text: id, value: id};
+        });
     });
   }
 
@@ -98,7 +124,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
       if (result.data.hasOwnProperty(key)) {
         return [' *'].concat(result.data[key]).map(value => {
@@ -124,7 +150,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics' + params,
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
       return _.map(result.data, metric => {
         return {text: metric.id, value: metric.id};
@@ -136,7 +162,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics/tags/' + pattern,
       method: 'GET',
-      headers: this.createHeaders()
+      headers: this.headers
     }).then(result => {
       var flatTags = [];
       if (result.data) {

@@ -3,7 +3,7 @@
   "type": "datasource",
   "name": "Hawkular",
   "metrics": true,
-  "annotations": false,
+  "annotations": true,
   "info": {
     "description": "Hawkular Datasource",
     "author": {

@@ -18,6 +18,8 @@ Select the tenant. On Hawkular servers, use `hawkular`.
 
 Openshift-Metrics users must provide an authentication token.
 
+Note that if you configure both Basic Authentication and a Token, only Basic Authentication will be effective.
+
 ## Usage
 
 ### Queries
@@ -67,6 +69,28 @@ Example of query to get matching tag values
 > For instance, type _"tags/type:*"_ to get all of the available tag values for _"type"_.
 
 Once you have set some variables, you can use them in graph queries: either for row or graph duplication, or to display multiple series in a single graph from a single query. This is especially useful when metric names contain some dynamic parts and thus cannot be known in advance.
+
+### Annotations
+
+Annotations are available through the use of _'string'_ metrics in Hawkular. It's a Grafana feature that allows to display custom events in timed charts. Here's how to proceed:
+
+1. Setup an annotation query in Grafana. In _'Query'_, put the name of a _'string'_ metric you want to use to gather these annotations.
+
+![Annotation setup](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/annotation-setup.png)
+
+2. Post any event (ie. string + timestamp) to some string metric.
+
+Example, JSON posted on [the Hawkular's REST API](http://www.hawkular.org/hawkular-metrics/docs/user-guide/#_inserting_data) to `/strings/my.timeline.metric/raw`:
+
+```json
+  [
+    {"timestamp": 1485352477824, "value": "Starting my scenario..."}
+  ]
+```
+
+3. Check your charts:
+
+![Annotation in chart](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/annotation.png)
 
 ## Installing from sources
 

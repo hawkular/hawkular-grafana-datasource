@@ -469,4 +469,112 @@ describe('HawkularDatasource', function () {
       expect(result.data[0].datapoints).to.deep.equal([[1, 13], [0, 19]]);
     }).then(v => done(), err => done(err));
   });
+
+  it('should query annotations without tags', function(done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      annotation: {
+        query: "my.timeline",
+        name: "Timeline"
+      }
+    };
+
+    ctx.backendSrv.datasourceRequest = function(request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['strings', 'raw', 'query']);
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          id: "my.timeline",
+          data: [{
+            timestamp: 13,
+            value: 'start'
+          }, {
+            timestamp: 19,
+            value: 'stop'
+          }]
+        }]
+      });
+    };
+
+    ctx.ds.annotationQuery(options).then(function(result) {
+      expect(result).to.have.length(2);
+      expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[0].time).to.equal(13);
+      expect(result[0].title).to.equal("Timeline");
+      expect(result[0].tags).to.be.undefined;
+      expect(result[0].text).to.equal("start");
+
+      expect(result[1].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[1].time).to.equal(19);
+      expect(result[1].title).to.equal("Timeline");
+      expect(result[1].tags).to.be.undefined;
+      expect(result[1].text).to.equal("stop");
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should query annotations with tags', function(done) {
+
+    var options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      annotation: {
+        query: "my.timeline",
+        name: "Timeline"
+      }
+    };
+
+    ctx.backendSrv.datasourceRequest = function(request) {
+      let pathElements = parsePathElements(request);
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['strings', 'raw', 'query']);
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          id: "my.timeline",
+          data: [{
+            timestamp: 13,
+            value: 'start',
+            tags: {
+              'item': 'myItem',
+              'step': 'start'
+            }
+          }, {
+            timestamp: 19,
+            value: 'stop',
+            tags: {
+              'item': 'myItem',
+              'step': 'stop'
+            }
+          }]
+        }]
+      });
+    };
+
+    ctx.ds.annotationQuery(options).then(function(result) {
+      expect(result).to.have.length(2);
+      expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[0].time).to.equal(13);
+      expect(result[0].title).to.equal("Timeline");
+      expect(result[0].tags).to.equal("myItem start");
+      expect(result[0].text).to.equal("start");
+
+      expect(result[1].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[1].time).to.equal(19);
+      expect(result[1].title).to.equal("Timeline");
+      expect(result[1].tags).to.equal("myItem stop");
+      expect(result[1].text).to.equal("stop");
+    }).then(v => done(), err => done(err));
+  });
 });
