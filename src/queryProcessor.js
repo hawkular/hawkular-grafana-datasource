@@ -42,7 +42,7 @@ export class QueryProcessor {
       } else {
         if (caps.TAGS_QUERY_LANGUAGE) {
           if (target.tagsQL !== undefined && target.tagsQL.length > 0) {
-            postData.tagsQuery = this.variables.resolveToString(target.tagsQL, options);
+            postData.tags = this.variables.resolveToString(target.tagsQL, options);
           } else {
             return this.q.when([]);
           }
@@ -57,7 +57,7 @@ export class QueryProcessor {
           return this.rawQuery(target, postData);
         } else if (target.timeAggFn == 'live') {
           // Need to change postData
-          return this.singleStatLiveQuery(target, {tags: postData.tags, tagsQuery: postData.tagsQuery, limit: 1});
+          return this.singleStatLiveQuery(target, {tags: postData.tags, limit: 1});
         } else {
           // Need to perform multiple series aggregation
           return this.singleStatQuery(target, postData);

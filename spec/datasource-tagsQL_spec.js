@@ -70,7 +70,7 @@ describe('HawkularDatasource with tagsQL', function () {
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
-        tagsQuery: "type=memory AND host=myhost",
+        tags: "type=memory AND host=myhost",
         order: 'ASC'
       });
 
@@ -107,7 +107,7 @@ describe('HawkularDatasource with tagsQL', function () {
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
-        tagsQuery: "type=memory",
+        tags: "type=memory",
         buckets: 1,
         stacked: true
       });
@@ -143,7 +143,7 @@ describe('HawkularDatasource with tagsQL', function () {
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
       expect(request.data.limit).to.equal(1);
-      expect(request.data.tagsQuery).to.equal("type=memory");
+      expect(request.data.tags).to.equal("type=memory");
 
       return ctx.$q.when({
         status: 200,

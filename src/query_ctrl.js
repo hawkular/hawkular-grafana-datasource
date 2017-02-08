@@ -45,6 +45,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.target.type = this.target.type || this.metricTypes[0].value;
     // backward compatibility: check target.target
     this.target.id = this.target.id || this.target.target || '-- none --';
+    delete this.target.target;
     this.target.rate = this.target.rate === true;
     this.target.tags = this.target.tags || [];
     this.target.tagsQL = this.target.tagsQL || "";
