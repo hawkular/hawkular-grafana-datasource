@@ -9,8 +9,9 @@ This project is the Hawkular Datasource plugin for Grafana 3. It works with:
 
 The datasource URL must point to the Hawkular Metrics service, e.g. `http://myhost:8080/hawkular/metrics`
 
-`direct` access mode only works with standalone Metrics servers currently. If you active it, make sure to allow
-the Grafana server origin in Metrics' configuration.
+Access: both `proxy` and `direct` modes should work in most configurations. Some earlier versions of Hawkular Metrics had a bug with CORS headers, that prevented the use of `direct` mode here.
+If you want to use `direct` mode (that is, direct calls from client browser to Hawkular REST API), and if you have setup CORS restrictions in Hawkular, make sure to allow the Grafana server origin in Metrics' configuration.
+If you're unsure, just use `proxy` mode and you should be fine.
 
 Authentication must be set when working with a Hawkular server. Check the 'Basic Auth' box and fill the user and password fields.
 
