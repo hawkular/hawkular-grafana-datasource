@@ -77,7 +77,7 @@ export function segmentsToModel(segments) {
 
 export function modelToSegments(tags, segmentFactory) {
   // or "deserialize"
-  return _.reduce(tags, function(list, tag) {
+  return _.reduce(tags, (list, tag) => {
       list.push(segmentFactory.newKey(tag.name));
       list.push(segmentFactory.newOperator(':'));
       if (tag.value === '*') {

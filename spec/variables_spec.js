@@ -1,23 +1,21 @@
 import {Variables} from "../variables";
 import Q from "q";
 
-describe('Variables', function () {
+describe('Variables', () => {
   let ctx = {
     templateSrv: {},
     variables: {}
   };
 
-  beforeEach(function () {
+  beforeEach(() => {
     ctx.templateSrv = {
-        replace: function(target, vars) {
-          return target;
-        }
+        replace: (target, vars) => target
     };
     ctx.variables = new Variables(ctx.templateSrv);
   });
 
   it('should resolve single variable', function (done) {
-    ctx.templateSrv.replace = function(target, vars) {
+    ctx.templateSrv.replace = (target, vars) => {
       expect(target).to.equal('$app');
       return "{app_1,app_2}";
     };
@@ -27,7 +25,7 @@ describe('Variables', function () {
   });
 
   it('should resolve multiple variables', function (done) {
-    ctx.templateSrv.replace = function(target, vars) {
+    ctx.templateSrv.replace = (target, vars) => {
       if (target === '$app') {
         return "{app_1,app_2}";
       }
@@ -49,7 +47,7 @@ describe('Variables', function () {
   });
 
   it('should resolve to string', function (done) {
-    ctx.templateSrv.replace = function(target, vars) {
+    ctx.templateSrv.replace = (target, vars) => {
       if (target === '$app') {
         return "{app_1,app_2}";
       }

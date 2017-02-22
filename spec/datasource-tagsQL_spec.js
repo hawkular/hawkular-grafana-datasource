@@ -1,7 +1,7 @@
 import {Datasource} from "../module";
 import Q from "q";
 
-describe('HawkularDatasource with tagsQL', function () {
+describe('HawkularDatasource with tagsQL', () => {
   var ctx = {};
   var hProtocol = 'https';
   var hHostname = 'test.com';
@@ -14,7 +14,7 @@ describe('HawkularDatasource with tagsQL', function () {
     }
   };
 
-  var parsePathElements = function(request) {
+  var parsePathElements = request => {
     expect(request.method).to.equal('POST');
     expect(request.headers).to.have.property('Hawkular-Tenant', instanceSettings.jsonData.tenant);
 
@@ -29,21 +29,19 @@ describe('HawkularDatasource with tagsQL', function () {
     return parser.pathname.split('/').filter(e => e.length != 0);
   }
 
-  beforeEach(function () {
+  beforeEach(() => {
     ctx.$q = Q;
     ctx.backendSrv = {};
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       return ctx.$q.when({data: {'Implementation-Version': '0.24.0'}})
     };
     ctx.templateSrv = {
-        replace: function(target, vars) {
-          return target;
-        }
+        replace: (target, vars) => target
     };
     ctx.ds = new Datasource(instanceSettings, ctx.$q, ctx.backendSrv, ctx.templateSrv);
   });
 
-  it('should return an empty array when no targets are set', function (done) {
+  it('should return an empty array when no targets are set', done => {
     ctx.ds.query({targets: []}).then(function (result) {
       expect(result).to.have.property('data').with.length(0);
     }).then(v => done(), err => done(err));

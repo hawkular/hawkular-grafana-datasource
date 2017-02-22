@@ -1,7 +1,7 @@
 import {segmentsToModel, modelToSegments} from '../tagsKVPairsController';
 import Q from "q";
 
-describe('TagsKVPairs', function() {
+describe('TagsKVPairs', () => {
 
   let newSegment = props => {
     // console.log("Adding segment: " + props.type + ", " + props.value);
@@ -15,13 +15,13 @@ describe('TagsKVPairs', function() {
     newKeyValue: v => newSegment({type: 'value', value: v})
   };
 
-  it('should convert empty segments to empty model', function(done) {
+  it('should convert empty segments to empty model', done => {
     let result = segmentsToModel([]);
     expect(result).to.deep.equal([]);
     done();
   });
 
-  it('should convert segments to model', function(done) {
+  it('should convert segments to model', done => {
     let segments = [
       { type: 'key', value: 'hostname' },
       { type: 'operator', value: ':' },
@@ -40,19 +40,19 @@ describe('TagsKVPairs', function() {
     done();
   });
 
-  it('should convert empty model to empty segments', function(done) {
+  it('should convert empty model to empty segments', done => {
     let result = modelToSegments([], segmentFactory);
     expect(result).to.deep.equal([]);
     done();
   });
 
-  it('should convert undefined model to empty segments', function(done) {
+  it('should convert undefined model to empty segments', done => {
     let result = modelToSegments(undefined, segmentFactory);
     expect(result).to.deep.equal([]);
     done();
   });
 
-  it('should convert model to segments', function(done) {
+  it('should convert model to segments', done => {
     let result = modelToSegments([
       { name: "hostname", value: "*" },
       { name: "pod", value: "unknown" }

@@ -1,7 +1,7 @@
 import {segmentsToString, stringToSegments, convertFromKVPairs} from '../tagsQLController';
 import Q from "q";
 
-describe('TagsQL', function() {
+describe('TagsQL', () => {
 
   let newSegment = props => {
     // console.log("Adding segment: " + props.type + ", " + props.value);

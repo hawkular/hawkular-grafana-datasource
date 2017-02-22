@@ -1,7 +1,7 @@
 import {Datasource} from "../module";
 import Q from "q";
 
-describe('HawkularDatasource', function () {
+describe('HawkularDatasource', () => {
   var ctx = {};
   var hProtocol = 'https';
   var hHostname = 'test.com';
@@ -14,7 +14,7 @@ describe('HawkularDatasource', function () {
     }
   };
 
-  var parsePathElements = function(request) {
+  var parsePathElements = request => {
     expect(request.method).to.equal('POST');
     expect(request.headers).to.have.property('Hawkular-Tenant', instanceSettings.jsonData.tenant);
 
@@ -29,27 +29,25 @@ describe('HawkularDatasource', function () {
     return parser.pathname.split('/').filter(e => e.length != 0);
   }
 
-  beforeEach(function () {
+  beforeEach(() => {
     ctx.$q = Q;
     ctx.backendSrv = {};
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       return ctx.$q.when({data: {'Implementation-Version': '0.22.0'}})
     };
     ctx.templateSrv = {
-        replace: function(target, vars) {
-          return target;
-        }
+        replace: (target, vars) => target
     };
     ctx.ds = new Datasource(instanceSettings, ctx.$q, ctx.backendSrv, ctx.templateSrv);
   });
 
-  it('should return an empty array when no targets are set', function (done) {
-    ctx.ds.query({targets: []}).then(function (result) {
+  it('should return an empty array when no targets are set', done => {
+    ctx.ds.query({targets: []}).then(result => {
       expect(result).to.have.property('data').with.length(0);
     }).then(v => done(), err => done(err));
   });
 
-  it('should return the server results when a target is set', function (done) {
+  it('should return the server results when a target is set', done => {
 
     var options = {
       range: {
@@ -67,7 +65,7 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       var id = pathElements[2] == 'gauges' ? 'memory' : 'packets';
 
@@ -115,7 +113,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should return multiple results with templated target', function (done) {
+  it('should return multiple results with templated target', done => {
 
     let options = {
       range: {
@@ -129,12 +127,12 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.templateSrv.replace = function(target, vars) {
+    ctx.templateSrv.replace = (target, vars) => {
       expect(target).to.equal('$app');
       return "{app_1,app_2}";
     };
 
-    ctx.backendSrv.datasourceRequest = function(request) {
+    ctx.backendSrv.datasourceRequest = request => {
       expect(request.url).to.have.string("/gauges/raw/query");
       expect(request.data.ids).to.include.members(['app_1/memory', 'app_2/memory']);
       return ctx.$q.when({
@@ -169,7 +167,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should query by tags', function (done) {
+  it('should query by tags', done => {
 
     var options = {
       range: {
@@ -186,7 +184,7 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -230,7 +228,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should return aggregated stats max/stacked', function (done) {
+  it('should return aggregated stats max/stacked', done => {
 
     var options = {
       range: {
@@ -246,7 +244,7 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -277,7 +275,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should return aggregated stats avg/not stacked', function (done) {
+  it('should return aggregated stats avg/not stacked', done => {
 
     var options = {
       range: {
@@ -293,7 +291,7 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -324,7 +322,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should return live stats stacked', function (done) {
+  it('should return live stats stacked', done => {
 
     var options = {
       range: {
@@ -340,7 +338,7 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -372,7 +370,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should return live stats not stacked', function (done) {
+  it('should return live stats not stacked', done => {
 
     var options = {
       range: {
@@ -388,7 +386,7 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -420,7 +418,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should query availability', function (done) {
+  it('should query availability', done => {
 
     var options = {
       range: {
@@ -433,7 +431,7 @@ describe('HawkularDatasource', function () {
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -461,7 +459,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should query annotations without tags', function(done) {
+  it('should query annotations without tags', done => {
 
     var options = {
       range: {
@@ -474,7 +472,7 @@ describe('HawkularDatasource', function () {
       }
     };
 
-    ctx.backendSrv.datasourceRequest = function(request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -495,7 +493,7 @@ describe('HawkularDatasource', function () {
       });
     };
 
-    ctx.ds.annotationQuery(options).then(function(result) {
+    ctx.ds.annotationQuery(options).then(result => {
       expect(result).to.have.length(2);
       expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
       expect(result[0].time).to.equal(13);
@@ -511,7 +509,7 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should query annotations with tags', function(done) {
+  it('should query annotations with tags', done => {
 
     var options = {
       range: {
@@ -524,7 +522,7 @@ describe('HawkularDatasource', function () {
       }
     };
 
-    ctx.backendSrv.datasourceRequest = function(request) {
+    ctx.backendSrv.datasourceRequest = request => {
       let pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -553,7 +551,7 @@ describe('HawkularDatasource', function () {
       });
     };
 
-    ctx.ds.annotationQuery(options).then(function(result) {
+    ctx.ds.annotationQuery(options).then(result => {
       expect(result).to.have.length(2);
       expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
       expect(result[0].time).to.equal(13);
@@ -569,8 +567,8 @@ describe('HawkularDatasource', function () {
     }).then(v => done(), err => done(err));
   });
 
-  it('should get tags suggestions', function (done) {
-    ctx.backendSrv.datasourceRequest = function(request) {
+  it('should get tags suggestions', done => {
+    ctx.backendSrv.datasourceRequest = request => {
       var parser = document.createElement('a');
       parser.href = request.url;
       let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
@@ -586,15 +584,15 @@ describe('HawkularDatasource', function () {
       });
     };
 
-    ctx.ds.suggestTags('gauge', 'host').then(function(result) {
+    ctx.ds.suggestTags('gauge', 'host').then(result => {
       expect(result).to.have.length(2);
       expect(result[0]).to.deep.equal({ text: 'cartago', value: 'cartago' });
       expect(result[1]).to.deep.equal({ text: 'rio', value: 'rio' });
     }).then(v => done(), err => done(err));
   });
 
-  it('should get no suggestions on unknown tag', function (done) {
-    ctx.backendSrv.datasourceRequest = function(request) {
+  it('should get no suggestions on unknown tag', done => {
+    ctx.backendSrv.datasourceRequest = request => {
       var parser = document.createElement('a');
       parser.href = request.url;
       let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
@@ -606,13 +604,13 @@ describe('HawkularDatasource', function () {
         data: {}
       });
     };
-    ctx.ds.suggestTags('gauge', 'host').then(function(result) {
+    ctx.ds.suggestTags('gauge', 'host').then(result => {
       expect(result).to.have.length(0);
     }).then(v => done(), err => done(err));
   });
 
-  it('should get tag keys suggestions', function (done) {
-    ctx.backendSrv.datasourceRequest = function(request) {
+  it('should get tag keys suggestions', done => {
+    ctx.backendSrv.datasourceRequest = request => {
       var parser = document.createElement('a');
       parser.href = request.url;
       let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
@@ -625,7 +623,7 @@ describe('HawkularDatasource', function () {
       });
     };
 
-    ctx.ds.suggestTagKeys().then(function(result) {
+    ctx.ds.suggestTagKeys().then(result => {
       expect(result).to.have.length(2);
       expect(result[0]).to.deep.equal({ text: 'host', value: 'host' });
       expect(result[1]).to.deep.equal({ text: 'app', value: 'app' });

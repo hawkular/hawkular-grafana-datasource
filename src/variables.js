@@ -27,7 +27,7 @@ export class Variables {
   resolveToString(target, options) {
     let self = this;
     let variables = options.scopedVars || this.templateSrv.variables;
-    return target.replace(/\$\w+/g, function(name) {
+    return target.replace(/\$\w+/g, name => {
       let values = self.getVarValues(name, variables);
       return values.map(v => "'" + v + "'").join(',');
     });

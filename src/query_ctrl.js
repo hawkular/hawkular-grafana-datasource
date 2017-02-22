@@ -18,9 +18,9 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.datasource.getCapabilities().then(caps => {
       self.caps = caps;
       if (caps.TAGS_QUERY_LANGUAGE) {
-        self.tagsController = new TagsQLController(uiSegmentSrv, self.datasource, $q, function() { return self.target; });
+        self.tagsController = new TagsQLController(uiSegmentSrv, self.datasource, $q, () => self.target);
       } else {
-        self.tagsController = new TagsKVPairsController(uiSegmentSrv, self.datasource, $q, caps.FETCH_ALL_TAGS, function() { return self.target; });
+        self.tagsController = new TagsKVPairsController(uiSegmentSrv, self.datasource, $q, caps.FETCH_ALL_TAGS, () => self.target);
       }
       self.tagsSegments = self.tagsController.initTagsSegments();
     });

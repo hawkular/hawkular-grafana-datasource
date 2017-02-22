@@ -57,9 +57,7 @@ export class HawkularDatasource {
 
     return this.q.all(promises).then(responses => {
       let flatten = [].concat.apply([], responses)
-        .sort(function(m1, m2) {
-          return m1.target.localeCompare(m2.target);
-        });
+        .sort((m1, m2) => m1.target.localeCompare(m2.target));
       return {data: flatten};
     });
   }
