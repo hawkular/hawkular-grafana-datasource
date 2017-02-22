@@ -2,23 +2,23 @@ import {Datasource} from "../module";
 import Q from "q";
 
 describe('HawkularDatasource', () => {
-  var ctx = {};
-  var hProtocol = 'https';
-  var hHostname = 'test.com';
-  var hPort = '876';
-  var hPath = 'hawkular/metrics';
-  var instanceSettings = {
+  let ctx = {};
+  let hProtocol = 'https';
+  let hHostname = 'test.com';
+  let hPort = '876';
+  let hPath = 'hawkular/metrics';
+  let instanceSettings = {
     url: hProtocol + '://' + hHostname + ':' + hPort + '/' + hPath,
     jsonData: {
       tenant: 'test-tenant'
     }
   };
 
-  var parsePathElements = request => {
+  let parsePathElements = request => {
     expect(request.method).to.equal('POST');
     expect(request.headers).to.have.property('Hawkular-Tenant', instanceSettings.jsonData.tenant);
 
-    var parser = document.createElement('a');
+    let parser = document.createElement('a');
     parser.href = request.url;
 
     expect(parser).to.have.property('protocol', hProtocol + ':');
@@ -49,7 +49,7 @@ describe('HawkularDatasource', () => {
 
   it('should return the server results when a target is set', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -66,8 +66,8 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
-      var id = pathElements[2] == 'gauges' ? 'memory' : 'packets';
+      const pathElements = parsePathElements(request);
+      let id = pathElements[2] == 'gauges' ? 'memory' : 'packets';
 
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
@@ -105,7 +105,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(2);
       expect(result.data.map(t => t.target)).to.include.members(['memory', 'packets']);
       expect(result.data[0].datapoints).to.deep.equal([[15, 13], [21, 19]]);
@@ -115,7 +115,7 @@ describe('HawkularDatasource', () => {
 
   it('should return multiple results with templated target', done => {
 
-    let options = {
+    const options = {
       range: {
         from: 15,
         to: 30
@@ -159,7 +159,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(2);
       expect(result.data.map(t => t.target)).to.include.members(['app_1/memory', 'app_2/memory']);
       expect(result.data[0].datapoints).to.deep.equal([[15, 13], [21, 19]]);
@@ -169,7 +169,7 @@ describe('HawkularDatasource', () => {
 
   it('should query by tags', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -185,7 +185,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
@@ -220,7 +220,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(2);
       expect(result.data.map(t => t.target)).to.include.members(['myhost.metric.memory.1', 'myhost.metric.memory.2']);
       expect(result.data[0].datapoints).to.deep.equal([[15, 13], [21, 19]]);
@@ -230,7 +230,7 @@ describe('HawkularDatasource', () => {
 
   it('should return aggregated stats max/stacked', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -245,7 +245,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'stats', 'query']);
@@ -269,7 +269,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(1);
       expect(result.data[0].datapoints).to.deep.equal([[46, 13]]);
     }).then(v => done(), err => done(err));
@@ -277,7 +277,7 @@ describe('HawkularDatasource', () => {
 
   it('should return aggregated stats avg/not stacked', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -292,7 +292,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'stats', 'query']);
@@ -316,7 +316,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(1);
       expect(result.data[0].datapoints).to.deep.equal([[20.25, 13]]);
     }).then(v => done(), err => done(err));
@@ -324,7 +324,7 @@ describe('HawkularDatasource', () => {
 
   it('should return live stats stacked', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -339,7 +339,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
@@ -364,7 +364,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(1);
       expect(result.data[0].datapoints).to.deep.equal([[46, 18]]);
     }).then(v => done(), err => done(err));
@@ -372,7 +372,7 @@ describe('HawkularDatasource', () => {
 
   it('should return live stats not stacked', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -387,7 +387,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
@@ -412,7 +412,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(1);
       expect(result.data[0].datapoints).to.deep.equal([[23, 18]]);
     }).then(v => done(), err => done(err));
@@ -420,7 +420,7 @@ describe('HawkularDatasource', () => {
 
   it('should query availability', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -432,7 +432,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['availability', 'raw', 'query']);
@@ -452,7 +452,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.query(options).then(function (result) {
+    ctx.ds.query(options).then(result => {
       expect(result.data).to.have.length(1);
       expect(result.data[0].target).to.equal('myapp/health');
       expect(result.data[0].datapoints).to.deep.equal([[1, 13], [0, 19]]);
@@ -461,7 +461,7 @@ describe('HawkularDatasource', () => {
 
   it('should query annotations without tags', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -473,7 +473,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['strings', 'raw', 'query']);
@@ -511,7 +511,7 @@ describe('HawkularDatasource', () => {
 
   it('should query annotations with tags', done => {
 
-    var options = {
+    let options = {
       range: {
         from: 15,
         to: 30
@@ -523,7 +523,7 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      let pathElements = parsePathElements(request);
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['strings', 'raw', 'query']);
@@ -569,9 +569,9 @@ describe('HawkularDatasource', () => {
 
   it('should get tags suggestions', done => {
     ctx.backendSrv.datasourceRequest = request => {
-      var parser = document.createElement('a');
+      let parser = document.createElement('a');
       parser.href = request.url;
-      let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
+      const pathElements = parser.pathname.split('/').filter(e => e.length != 0);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'tags', 'host:*']);
@@ -593,9 +593,9 @@ describe('HawkularDatasource', () => {
 
   it('should get no suggestions on unknown tag', done => {
     ctx.backendSrv.datasourceRequest = request => {
-      var parser = document.createElement('a');
+      let parser = document.createElement('a');
       parser.href = request.url;
-      let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
+      const pathElements = parser.pathname.split('/').filter(e => e.length != 0);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'tags', 'host:*']);
@@ -611,9 +611,9 @@ describe('HawkularDatasource', () => {
 
   it('should get tag keys suggestions', done => {
     ctx.backendSrv.datasourceRequest = request => {
-      var parser = document.createElement('a');
+      let parser = document.createElement('a');
       parser.href = request.url;
-      let pathElements = parser.pathname.split('/').filter(e => e.length != 0);
+      const pathElements = parser.pathname.split('/').filter(e => e.length != 0);
       expect(pathElements).to.have.length(4);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['metrics', 'tags']);

@@ -2,23 +2,23 @@ import {Datasource} from "../module";
 import Q from "q";
 
 describe('HawkularDatasource with tagsQL', () => {
-  var ctx = {};
-  var hProtocol = 'https';
-  var hHostname = 'test.com';
-  var hPort = '876';
-  var hPath = 'hawkular/metrics';
-  var instanceSettings = {
+  const ctx = {};
+  const hProtocol = 'https';
+  const hHostname = 'test.com';
+  const hPort = '876';
+  const hPath = 'hawkular/metrics';
+  const instanceSettings = {
     url: hProtocol + '://' + hHostname + ':' + hPort + '/' + hPath,
     jsonData: {
       tenant: 'test-tenant'
     }
   };
 
-  var parsePathElements = request => {
+  const parsePathElements = request => {
     expect(request.method).to.equal('POST');
     expect(request.headers).to.have.property('Hawkular-Tenant', instanceSettings.jsonData.tenant);
 
-    var parser = document.createElement('a');
+    const parser = document.createElement('a');
     parser.href = request.url;
 
     expect(parser).to.have.property('protocol', hProtocol + ':');
@@ -42,33 +42,33 @@ describe('HawkularDatasource with tagsQL', () => {
   });
 
   it('should return an empty array when no targets are set', done => {
-    ctx.ds.query({targets: []}).then(function (result) {
+    ctx.ds.query({targets: []}).then(result => {
       expect(result).to.have.property('data').with.length(0);
     }).then(v => done(), err => done(err));
   });
 
-  it('should query by tags QL', function (done) {
-    var options = {
+  it('should query by tags QL', done => {
+    const options = {
       range: {
         from: 15,
         to: 30
       },
       targets: [{
-        tagsQL: "type=memory AND host=myhost",
+        tagsQL: 'type=memory AND host=myhost',
         type: 'gauge',
         rate: false
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
-      let pathElements = parsePathElements(request);
+    ctx.backendSrv.datasourceRequest = request => {
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
-        tags: "type=memory AND host=myhost",
+        tags: 'type=memory AND host=myhost',
         order: 'ASC'
       });
 
@@ -81,9 +81,9 @@ describe('HawkularDatasource with tagsQL', () => {
     ctx.ds.query(options).then(v => done(), err => done(err));
   });
 
-  it('should return aggregated stats by tags QL', function (done) {
+  it('should return aggregated stats by tags QL', done => {
 
-    var options = {
+    const options = {
       range: {
         from: 15,
         to: 30
@@ -91,21 +91,21 @@ describe('HawkularDatasource with tagsQL', () => {
       targets: [{
         seriesAggFn: 'sum',
         timeAggFn: 'max',
-        tagsQL: "type=memory",
+        tagsQL: 'type=memory',
         type: 'gauge',
         rate: false
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
-      let pathElements = parsePathElements(request);
+    ctx.backendSrv.datasourceRequest = request => {
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'stats', 'query']);
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
-        tags: "type=memory",
+        tags: 'type=memory',
         buckets: 1,
         stacked: true
       });
@@ -119,9 +119,9 @@ describe('HawkularDatasource with tagsQL', () => {
     ctx.ds.query(options).then(v => done(), err => done(err));
   });
 
-  it('should return live stats with tagsQL', function (done) {
+  it('should return live stats with tagsQL', done => {
 
-    var options = {
+    const options = {
       range: {
         from: 15,
         to: 30
@@ -129,19 +129,19 @@ describe('HawkularDatasource with tagsQL', () => {
       targets: [{
         seriesAggFn: 'sum',
         timeAggFn: 'live',
-        tagsQL: "type=memory",
+        tagsQL: 'type=memory',
         type: 'gauge',
         rate: false
       }]
     };
 
-    ctx.backendSrv.datasourceRequest = function (request) {
-      let pathElements = parsePathElements(request);
+    ctx.backendSrv.datasourceRequest = request => {
+      const pathElements = parsePathElements(request);
       expect(pathElements).to.have.length(5);
       expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
       expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
       expect(request.data.limit).to.equal(1);
-      expect(request.data.tags).to.equal("type=memory");
+      expect(request.data.tags).to.equal('type=memory');
 
       return ctx.$q.when({
         status: 200,

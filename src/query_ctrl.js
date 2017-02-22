@@ -13,16 +13,15 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.uiSegmentSrv = uiSegmentSrv;
     this.$q = $q;
 
-    let self = this;
     this.caps = new Capabilities("");
     this.datasource.getCapabilities().then(caps => {
-      self.caps = caps;
+      this.caps = caps;
       if (caps.TAGS_QUERY_LANGUAGE) {
-        self.tagsController = new TagsQLController(uiSegmentSrv, self.datasource, $q, () => self.target);
+        this.tagsController = new TagsQLController(uiSegmentSrv, this.datasource, $q, () => this.target);
       } else {
-        self.tagsController = new TagsKVPairsController(uiSegmentSrv, self.datasource, $q, caps.FETCH_ALL_TAGS, () => self.target);
+        this.tagsController = new TagsKVPairsController(uiSegmentSrv, this.datasource, $q, caps.FETCH_ALL_TAGS, () => this.target);
       }
-      self.tagsSegments = self.tagsController.initTagsSegments();
+      this.tagsSegments = this.tagsController.initTagsSegments();
     });
 
     this.metricTypes = [

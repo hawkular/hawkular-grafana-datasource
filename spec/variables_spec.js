@@ -2,7 +2,7 @@ import {Variables} from "../variables";
 import Q from "q";
 
 describe('Variables', () => {
-  let ctx = {
+  const ctx = {
     templateSrv: {},
     variables: {}
   };
@@ -14,17 +14,17 @@ describe('Variables', () => {
     ctx.variables = new Variables(ctx.templateSrv);
   });
 
-  it('should resolve single variable', function (done) {
+  it('should resolve single variable', done => {
     ctx.templateSrv.replace = (target, vars) => {
       expect(target).to.equal('$app');
       return "{app_1,app_2}";
     };
-    let resolved = ctx.variables.resolve("$app/memory/usage", {});
+    const resolved = ctx.variables.resolve("$app/memory/usage", {});
     expect(resolved).to.deep.equal(['app_1/memory/usage', 'app_2/memory/usage']);
     done();
   });
 
-  it('should resolve multiple variables', function (done) {
+  it('should resolve multiple variables', done => {
     ctx.templateSrv.replace = (target, vars) => {
       if (target === '$app') {
         return "{app_1,app_2}";
@@ -34,7 +34,7 @@ describe('Variables', () => {
       }
       return target;
     };
-    let resolved = ctx.variables.resolve("$app/$container/memory/usage", {});
+    const resolved = ctx.variables.resolve("$app/$container/memory/usage", {});
     expect(resolved).to.deep.equal([
       'app_1/1234/memory/usage',
       'app_2/1234/memory/usage',
@@ -46,7 +46,7 @@ describe('Variables', () => {
     done();
   });
 
-  it('should resolve to string', function (done) {
+  it('should resolve to string', done => {
     ctx.templateSrv.replace = (target, vars) => {
       if (target === '$app') {
         return "{app_1,app_2}";
@@ -55,7 +55,7 @@ describe('Variables', () => {
         return "{1234,5678,90}";
       }
     };
-    let resolved = ctx.variables.resolveToString("app IN [$app] AND container NOT IN ['a', $container, 'z']", {});
+    const resolved = ctx.variables.resolveToString("app IN [$app] AND container NOT IN ['a', $container, 'z']", {});
     expect(resolved).to.deep.equal("app IN ['app_1','app_2'] AND container NOT IN ['a', '1234','5678','90', 'z']");
     done();
   });

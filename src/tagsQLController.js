@@ -1,12 +1,12 @@
 // "Natural language" operators
-let OPERATOR_EQ = '=';
-let OPERATOR_NOTEQ = '!=';
-let OPERATOR_IN = 'is in';
-let OPERATOR_NOTIN = 'is not in';
-let OPERATOR_EXISTS = 'exists';
-let OPERATOR_NOTEXISTS = 'doesn\'t exist';
-let OPERATOR_AND = 'AND';
-let OPERATOR_OR = 'OR';
+const OPERATOR_EQ = '=';
+const OPERATOR_NOTEQ = '!=';
+const OPERATOR_IN = 'is in';
+const OPERATOR_NOTIN = 'is not in';
+const OPERATOR_EXISTS = 'exists';
+const OPERATOR_NOTEXISTS = 'doesn\'t exist';
+const OPERATOR_AND = 'AND';
+const OPERATOR_OR = 'OR';
 
 export class TagsQLController {
 
@@ -20,16 +20,16 @@ export class TagsQLController {
   }
 
   initTagsSegments() {
-    let target = this.targetSupplier();
+    const target = this.targetSupplier();
     if (!target.tagsQL && target.tags) {
       // Compatibility, switching from older version
       target.tagsQL = convertFromKVPairs(target.tags);
     }
-    var segments = stringToSegments(target.tagsQL, this.uiSegmentSrv);
+    let segments = stringToSegments(target.tagsQL, this.uiSegmentSrv);
     segments.push(this.uiSegmentSrv.newPlusButton());
     // Fix plus-button: add it at the end of each enumeration
-    var isInEnum = false;
-    for (var i = 0; i < segments.length; i++) {
+    let isInEnum = false;
+    for (let i = 0; i < segments.length; i++) {
       if (segments[i].type === 'operator' && (segments[i].value === OPERATOR_IN || segments[i].value === OPERATOR_NOTIN)) {
         isInEnum = true;
       } else if (isInEnum && segments[i].type !== 'value') {
@@ -50,9 +50,9 @@ export class TagsQLController {
     }
     if (segment.type === 'plus-button') {
       // Find previous operator to know if we're in an enumeration
-      var i = this.getContainingEnum(segments, $index);
+      let i = this.getContainingEnum(segments, $index);
       if (i > 0) {
-        let key = segments[i-1].value;
+        const key = segments[i-1].value;
         return this.datasource.suggestTags(this.targetSupplier().type, key)
           .then(this.uiSegmentSrv.transformToSegments(false));
       } else {
@@ -60,19 +60,19 @@ export class TagsQLController {
       }
     } else if (segment.type === 'key')  {
       return this.getTagKeys()
-          .then(keys => [angular.copy(this.removeTagSegment)].concat(keys));
+          .then(keys => [angular.copy(this.removeTagSegment), ...keys]);
     } else if (segment.type === 'value')  {
       // Find preceding key
-      var i = $index - 2;
+      let i = $index - 2;
       while (segments[i].type !== 'key') {
         i--;
       }
-      let key = segments[i].value;
-      var promise = this.datasource.suggestTags(this.targetSupplier().type, key)
+      const key = segments[i].value;
+      let promise = this.datasource.suggestTags(this.targetSupplier().type, key)
         .then(this.uiSegmentSrv.transformToSegments(false));
       if (segments[$index-1].type === 'value') {
         // We're in an enumeration
-        promise = promise.then(values => [angular.copy(this.removeValueSegment)].concat(values));
+        promise = promise.then(values => [angular.copy(this.removeValueSegment), ...values]);
       }
       return promise;
     }
@@ -81,7 +81,7 @@ export class TagsQLController {
   // Returns -1 if not in enum, or the index of the operator if in enum
   getContainingEnum(segments, $index) {
     // Find previous operator to know if we're in an enumeration
-    var i = $index-1;
+    let i = $index-1;
     while (i >= 0) {
       if (segments[i].type === 'operator') {
         if (segments[i].value === OPERATOR_IN || segments[i].value === OPERATOR_NOTIN) {
@@ -107,7 +107,7 @@ export class TagsQLController {
     if (segment.value === this.removeTagSegment.value) {
       // Remove the whole tag sequence
       // Compute number of segments to delete forward
-      var nextSegment = index + 1;
+      let nextSegment = index + 1;
       if (index > 0) {
         // Also remove preceding AND/OR segment
         index--;
@@ -132,7 +132,7 @@ export class TagsQLController {
     } else if (segment.type === 'plus-button') {
       // Remove plus button
       segments.splice(index, 1);
-      var i = this.getContainingEnum(segments, index);
+      let i = this.getContainingEnum(segments, index);
       if (i > 0) {
         // We're in an enum, so add value
         segments.splice(index, 0,
@@ -152,9 +152,9 @@ export class TagsQLController {
     } else {
       if (segment.type === 'operator') {
         // Is there a change in number of operands?
-        let needOneRightOperand = segment.value === OPERATOR_EQ || segment.value === OPERATOR_NOTEQ;
-        let isEnum = segment.value === OPERATOR_IN || segment.value === OPERATOR_NOTIN;
-        var currentRightOperands = 0;
+        const needOneRightOperand = segment.value === OPERATOR_EQ || segment.value === OPERATOR_NOTEQ;
+        const isEnum = segment.value === OPERATOR_IN || segment.value === OPERATOR_NOTIN;
+        let currentRightOperands = 0;
         while (segments[index+currentRightOperands+1].type === 'value') {
           currentRightOperands++;
         }
@@ -212,9 +212,12 @@ function valueToString(value) {
   return "'" + value + "'";
 }
 
+// Example:
+// Input segment values: ["fruit", "is in", "pear", "apple", "peach", "<plus-button>", "AND", "color", "=", "green", "<plus-button>"]
+// Output string: "fruit IN [pear, apple, peach] AND color=green"
 export function segmentsToString(segments) {
-  var strTags = "";
-  var i = 0;
+  let strTags = "";
+  let i = 0;
   while (i < segments.length) {
     if (segments[i].type === 'plus-button') {
       i++;
@@ -225,9 +228,9 @@ export function segmentsToString(segments) {
       strTags += " " + segments[i++].value + " ";
     }
     // Tag name
-    let tagName = segments[i++].value;
+    const tagName = segments[i++].value;
     // Operator
-    let op = segments[i++].value;
+    const op = segments[i++].value;
     if (op === OPERATOR_EQ || op === OPERATOR_NOTEQ) {
       strTags += tagName + op + valueToString(segments[i++].value);
     } else if (op === OPERATOR_EXISTS) {
@@ -235,11 +238,11 @@ export function segmentsToString(segments) {
     } else if (op === OPERATOR_NOTEXISTS) {
       strTags += 'NOT ' + tagName;
     } else if (op === OPERATOR_IN) {
-      let v = valuesToString(segments, i);
+      const v = valuesToString(segments, i);
       i = v.i;
       strTags += tagName + ' IN [' + v.values + ']';
     } else if (op === OPERATOR_NOTIN) {
-      let v = valuesToString(segments, i);
+      const v = valuesToString(segments, i);
       i = v.i;
       strTags += tagName + ' NOT IN [' + v.values + ']';
     }
@@ -248,8 +251,8 @@ export function segmentsToString(segments) {
 }
 
 function valuesToString(segments, i) {
-  var values = "";
-  var sep = "";
+  let values = "";
+  let sep = "";
   while (i < segments.length && segments[i].type === 'value') {
     values += sep + valueToString(segments[i++].value);
     sep = ",";
@@ -260,13 +263,16 @@ function valuesToString(segments, i) {
   };
 }
 
+// Example:
+// Input string: "fruit IN [pear, apple, peach] AND color=green"
+// Output segment values: ["fruit", "is in", "pear", "apple", "peach", "<plus-button>", "AND", "color", "=", "green", "<plus-button>"]
 export function stringToSegments(strTags, segmentFactory) {
   if (strTags === undefined) {
     return [];
   }
-  var segments = [];
-  var cursor = 0;
-  var result;
+  let segments = [];
+  let cursor = 0;
+  let result;
   while (cursor < strTags.length) {
     if (cursor > 0) {
       result = readLogicalOp(strTags, cursor);
@@ -286,7 +292,7 @@ export function stringToSegments(strTags, segmentFactory) {
       segments.push(segmentFactory.newKey(result.value));
       // Check next word without increasing cursor: if it's a logical operator, we're on an "exists" operation
       result = readWord(strTags, cursor);
-      let nextCursor = skipWhile(strTags, result.cursor, c => c === ' ');
+      const nextCursor = skipWhile(strTags, result.cursor, c => c === ' ');
       if (nextCursor >= strTags.length || result.value === OPERATOR_AND || result.value === OPERATOR_OR) {
         segments.push(segmentFactory.newOperator(OPERATOR_EXISTS));
       } else {
@@ -326,13 +332,13 @@ function readLogicalOp(strTags, cursor) {
 
 function readWord(strTags, cursor) {
   cursor = skipWhile(strTags, cursor, c => c === ' ');
-  let remaining = strTags.substr(cursor);
+  const remaining = strTags.substr(cursor);
   if (remaining.charAt(0) === "'") {
-    let first = cursor;
+    const first = cursor;
     cursor = skipWhile(strTags, first+1, c => c !== "'") + 1;
     return { cursor: cursor, value: strTags.substr(first, cursor - first) };
   }
-  let word = remaining.match(/^(\$?[a-zA-Z0-9]*)/)[0];
+  const word = remaining.match(/^(\$?[a-zA-Z0-9]*)/)[0];
   cursor += word.length;
   return { cursor: cursor, value: word };
 }
@@ -355,10 +361,10 @@ function readRelationalOp(strTags, cursor) {
 }
 
 function readEnumeration(strTags, cursor) {
-  var values = [];
+  let values = [];
   cursor = skipWhile(strTags, cursor, c => c !== '[') + 1;
   while (cursor < strTags.length) {
-    var result = readWord(strTags, cursor);
+    let result = readWord(strTags, cursor);
     values.push(result.value);
     cursor = skipWhile(strTags, result.cursor, c => c === ' ');
     if (strTags.charAt(cursor) === ']') {
@@ -384,7 +390,7 @@ function skipWhile(strTags, cursor, cond) {
 function skipWhileNextNotIn(strTags, cursor, nextList) {
   while (cursor < strTags.length) {
     for (let expect of nextList) {
-      let actual = strTags.substr(cursor, expect.length);
+      const actual = strTags.substr(cursor, expect.length);
       if (actual === expect) {
         return cursor;
       }

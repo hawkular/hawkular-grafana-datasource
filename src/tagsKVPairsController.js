@@ -14,7 +14,7 @@ export class TagsKVPairsController {
   }
 
   initTagsSegments() {
-    var segments = modelToSegments(this.targetSupplier().tags, this.uiSegmentSrv);
+    let segments = modelToSegments(this.targetSupplier().tags, this.uiSegmentSrv);
     segments.push(this.uiSegmentSrv.newPlusButton());
     return segments;
   }
@@ -24,11 +24,11 @@ export class TagsKVPairsController {
       return this.getTagKeys();
     } else if (segment.type === 'key')  {
       return this.getTagKeys()
-          .then(keys => [angular.copy(this.removeTagsSegment)].concat(keys));
+          .then(keys => [angular.copy(this.removeTagsSegment), ...keys]);
     } else if (segment.type === 'value')  {
-      var key = segments[$index-2].value;
+      let key = segments[$index-2].value;
       return this.datasource.suggestTags(this.targetSupplier().type, key)
-        .then(tags => [{text: ' *', value: ' *'}].concat(tags))
+        .then(tags => [{text: ' *', value: ' *'}, ...tags])
         .then(this.uiSegmentSrv.transformToSegments(false));
     }
   }
@@ -62,10 +62,10 @@ export class TagsKVPairsController {
 
 export function segmentsToModel(segments) {
   // or "serialize"
-  var tags = [];
-  for (var i = 0; i < segments.length - 2; i += 4) {
-    let key = segments[i].value;
-    var val = segments[i+2].fake ? '*' : segments[i+2].value;
+  let tags = [];
+  for (let i = 0; i < segments.length - 2; i += 4) {
+    const key = segments[i].value;
+    let val = segments[i+2].fake ? '*' : segments[i+2].value;
     if (!val || val === ' *') {
       // '*' character get a special treatment in grafana so we had to use ' *' instead
       val = '*';
@@ -92,7 +92,7 @@ export function modelToSegments(tags, segmentFactory) {
 
 export function modelToString(tags, variables, options) {
   return tags.map(tag => {
-    var value;
+    let value;
     if (tag.value === ' *') {
       // '*' character get a special treatment in grafana so we had to use ' *' instead
       value = '*';

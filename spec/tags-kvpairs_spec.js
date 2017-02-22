@@ -3,26 +3,22 @@ import Q from "q";
 
 describe('TagsKVPairs', () => {
 
-  let newSegment = props => {
-    // console.log("Adding segment: " + props.type + ", " + props.value);
-    return props;
-  };
-  let segmentFactory = {
-    newSegment: newSegment,
-    newKey: key => newSegment({type: 'key', value: key}),
-    newCondition: cond => newSegment({type: 'condition', value: cond}),
-    newOperator: op => newSegment({type: 'operator', value: op}),
-    newKeyValue: v => newSegment({type: 'value', value: v})
+  const segmentFactory = {
+    newSegment: arg => arg,
+    newKey: key => ({type: 'key', value: key}),
+    newCondition: cond => ({type: 'condition', value: cond}),
+    newOperator: op => ({type: 'operator', value: op}),
+    newKeyValue: v => ({type: 'value', value: v})
   };
 
   it('should convert empty segments to empty model', done => {
-    let result = segmentsToModel([]);
+    const result = segmentsToModel([]);
     expect(result).to.deep.equal([]);
     done();
   });
 
   it('should convert segments to model', done => {
-    let segments = [
+    const segments = [
       { type: 'key', value: 'hostname' },
       { type: 'operator', value: ':' },
       { type: 'value', value: ' *' },
@@ -32,7 +28,7 @@ describe('TagsKVPairs', () => {
       { type: 'value', value: 'unknown' },
       { type: 'operator', value: ',' }
     ];
-    let result = segmentsToModel(segments);
+    const result = segmentsToModel(segments);
     expect(result).to.deep.equal([
       { name: "hostname", value: "*" },
       { name: "pod", value: "unknown" }
@@ -41,19 +37,19 @@ describe('TagsKVPairs', () => {
   });
 
   it('should convert empty model to empty segments', done => {
-    let result = modelToSegments([], segmentFactory);
+    const result = modelToSegments([], segmentFactory);
     expect(result).to.deep.equal([]);
     done();
   });
 
   it('should convert undefined model to empty segments', done => {
-    let result = modelToSegments(undefined, segmentFactory);
+    const result = modelToSegments(undefined, segmentFactory);
     expect(result).to.deep.equal([]);
     done();
   });
 
   it('should convert model to segments', done => {
-    let result = modelToSegments([
+    const result = modelToSegments([
       { name: "hostname", value: "*" },
       { name: "pod", value: "unknown" }
     ], segmentFactory);

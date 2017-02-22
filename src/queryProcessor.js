@@ -16,14 +16,14 @@ export class QueryProcessor {
 
   run(target, options) {
     return this.capabilities.then(caps => {
-      var postData = {
+      let postData = {
         start: options.range.from.valueOf(),
         end: options.range.to.valueOf(),
         order: 'ASC'
       };
-      var multipleMetrics = true;
+      let multipleMetrics = true;
       if (target.id) {
-        let metricIds = this.variables.resolve(target.id, options);
+        const metricIds = this.variables.resolve(target.id, options);
         if (caps.QUERY_POST_ENDPOINTS) {
           if (!target.seriesAggFn || target.seriesAggFn === 'none') {
             postData.ids = metricIds;
@@ -67,12 +67,12 @@ export class QueryProcessor {
   }
 
   rawQuery(target, postData) {
-    let uri = [
+    const uri = [
       this.typeResources[target.type],   // gauges or counters
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'
     ];
-    let url = this.url + '/' + uri.join('/');
+    const url = this.url + '/' + uri.join('/');
 
     return this.backendSrv.datasourceRequest({
       url: url,
@@ -84,11 +84,11 @@ export class QueryProcessor {
 
   rawQueryLegacy(target, range, metricIds) {
     return this.q.all(metricIds.map(metric => {
-      let uri = [
+      const uri = [
         this.typeResources[target.type],  // gauges, counters or availability
         encodeURIComponent(metric).replace('+', '%20'), // metric name
         'data'];
-      let url = this.url + '/' + uri.join('/');
+      const url = this.url + '/' + uri.join('/');
 
       return this.backendSrv.datasourceRequest({
         url: url,
@@ -113,13 +113,13 @@ export class QueryProcessor {
   }
 
   processRawResponseLegacy(target, metric, data) {
-    var datapoints;
+    let datapoints;
     if (target.type == 'availability') {
       datapoints = data.map(this.availMapping);
     } else if (!target.rate) {
       datapoints = data.map(this.numericMapping);
     } else {
-      var sortedData = data.sort((p1, p2)=> p1.timestamp - p2.timestamp);
+      let sortedData = data.sort((p1, p2)=> p1.timestamp - p2.timestamp);
       datapoints = _.chain(sortedData)
         .zip(sortedData.slice(1))
         .filter(pair => {
@@ -127,11 +127,11 @@ export class QueryProcessor {
             && (target.type != 'counter' || pair[0].value <= pair[1].value); // Exclude counter resets
         })
         .map(pair => {
-          var point1 = pair[0], point2 = pair[1];
-          var timestamp = point2.timestamp;
-          var value_diff = point2.value - point1.value;
-          var time_diff = point2.timestamp - point1.timestamp;
-          var rate = 60000 * value_diff / time_diff;
+          let point1 = pair[0], point2 = pair[1];
+          let timestamp = point2.timestamp;
+          let value_diff = point2.value - point1.value;
+          let time_diff = point2.timestamp - point1.timestamp;
+          let rate = 60000 * value_diff / time_diff;
           return [rate, timestamp];
         })
         .value();
@@ -146,7 +146,7 @@ export class QueryProcessor {
   singleStatQuery(target, postData) {
     // Query for singlestat => we just ask for a single bucket
     // But because of that we need to override Grafana behaviour, and manage ourselves the min/max/avg/etc. selection
-    var fnBucket;
+    let fnBucket;
     if (target.timeAggFn == 'avg') {
       fnBucket = bucket => bucket.avg;
     } else if (target.timeAggFn == 'min') {
@@ -154,7 +154,7 @@ export class QueryProcessor {
     } else if (target.timeAggFn == 'max') {
       fnBucket = bucket => bucket.max;
     } // no else case. "live" case was handled before
-    let url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
+    const url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
     delete postData.order;
     postData.buckets = 1;
     postData.stacked = target.seriesAggFn === 'sum';
@@ -177,12 +177,12 @@ export class QueryProcessor {
   }
 
   singleStatLiveQuery(target, postData) {
-    let uri = [
+    const uri = [
       this.typeResources[target.type], // gauges, counters or availability
       target.rate ? 'rate' : 'raw', // raw or rate
       'query'
     ];
-    let url = this.url + '/' + uri.join('/');
+    const url = this.url + '/' + uri.join('/');
     // Set start to now - 5m
     postData.start = Date.now() - 300000;
     return this.backendSrv.datasourceRequest({
@@ -194,14 +194,14 @@ export class QueryProcessor {
   }
 
   processSingleStatLiveResponse(target, data) {
-    var reduceFunc;
+    let reduceFunc;
     if (target.seriesAggFn === 'sum') {
       reduceFunc = (presentValues => presentValues.reduce((a,b) => a+b));
     } else {
       reduceFunc = (presentValues => presentValues.reduce((a,b) => a+b) / presentValues.length);
     }
-    var datapoints;
-    let latestPoints = data.filter(timeSeries => timeSeries.data.length > 0)
+    let datapoints;
+    const latestPoints = data.filter(timeSeries => timeSeries.data.length > 0)
         .map(timeSeries => timeSeries.data[0]);
     if (latestPoints.length === 0) {
       datapoints = [];
