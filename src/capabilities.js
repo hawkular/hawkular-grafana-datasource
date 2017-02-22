@@ -9,8 +9,8 @@ export class Capabilities {
     const regExp = new RegExp('([0-9]+)\.([0-9]+)\.(.+)');
     if (versionStr.match(regExp)) {
       const versionInfo = regExp.exec(versionStr);
-      const major = versionInfo[1];
-      const minor = versionInfo[2];
+      const major = +versionInfo[1];
+      const minor = +versionInfo[2];
       if (major === 0 && minor < 17) {
         this.QUERY_POST_ENDPOINTS = false;
       }
