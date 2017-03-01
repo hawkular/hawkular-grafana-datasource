@@ -167,20 +167,20 @@ export class HawkularDatasource {
         params = "?" + query;
       }
     }
-    return this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics' + params,
+    return this.runWithResolvedVariables(params, p => this.backendSrv.datasourceRequest({
+      url: this.url + '/metrics' + p,
       method: 'GET',
       headers: this.headers
     }).then(result => {
       return _.map(result.data, metric => {
         return {text: metric.id, value: metric.id};
       });
-    });
+    }));
   }
 
   findTags(pattern) {
-    return this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics/tags/' + pattern,
+    return this.runWithResolvedVariables(pattern, p => this.backendSrv.datasourceRequest({
+      url: this.url + '/metrics/tags/' + p,
       method: 'GET',
       headers: this.headers
     }).then(result => {
@@ -196,7 +196,13 @@ export class HawkularDatasource {
       return flatTags.map(tag => {
         return {text: tag, value: tag};
       });
-    });
+    }));
+  }
+
+  runWithResolvedVariables(target, func) {
+    const resolved = this.variables.resolve(target, {});
+    return this.q.all(resolved.map(p => func(p)))
+      .then(result => [].concat.apply([], result));
   }
 
   queryVersion() {
