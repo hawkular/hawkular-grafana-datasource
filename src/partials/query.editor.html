@@ -1,32 +1,32 @@
-<query-editor-row query-ctrl="ctrl" class="generic-datasource-query-row">
+<query-editor-row query-ctrl="ctrl" class="generic-datasource-query-row" has-text-edit-mode="true">
 	<div class="gf-form-inline">
 		<div class="gf-form">
 			<select class="gf-form-input" ng-model="ctrl.target.type" ng-change="ctrl.onChangeInternal()">
 				<option ng-repeat="type in ctrl.metricTypes" value="{{type.value}}">{{type.text}}</option>
 			</select>
 		</div>
-		<div class="gf-form">
-			<select ng-show="ctrl.queryByTagCapability" class="gf-form-input" ng-model="ctrl.target.queryBy" ng-change="ctrl.onChangeInternal()">
-				<option ng-repeat="q in ctrl.listQueryBy" value="{{q.value}}">{{q.text}}</option>
-			</select>
+		<div class="gf-form" ng-show="ctrl.caps.QUERY_BY_TAGS">
+			<label class="gf-form-label query-keyword fix-query-keyword">Tags</label>
+			<input ng-if="ctrl.target.rawTagsQuery" type="text" class="gf-form-input max-width-30" ng-model="ctrl.target.tagsQL" placeholder="Use tag query language" spellcheck="false" ng-blur="ctrl.onChangeInternal()"></input>
+			<metric-segment ng-if="!ctrl.target.rawTagsQuery" ng-repeat="segment in ctrl.tagsSegments" segment="segment" get-options="ctrl.getTagsSegments(segment, $index)" on-change="ctrl.tagsSegmentChanged(segment, $index)"></metric-segment>
 		</div>
-		<div class="gf-form" ng-if="ctrl.target.queryBy === 'ids'">
-			<metric-segment-model property="ctrl.target.target" get-options="ctrl.getOptions()" on-change="ctrl.onChangeInternal()" css-class="max-width-30"></metric-segment-model>
-		</div>
-		<div class="gf-form" ng-if="ctrl.target.queryBy === 'tags'">
-			<metric-segment ng-repeat="segment in ctrl.tagsSegments" segment="segment" get-options="ctrl.getTagsSegments(segment, $index)" on-change="ctrl.tagsSegmentChanged(segment, $index)"></metric-segment>
-		</div>
-		<gf-form-switch ng-if="ctrl.target.type !== 'availability'" class="gf-form" label="Rate" checked="ctrl.target.rate" switch-class="max-width-6" on-change="ctrl.onChangeInternal()"></gf-form-switch>
 	</div>
-	<div class="gf-form-inline" ng-show="ctrl.statsPostCapability" ng-if="ctrl.panel.type === 'singlestat' &amp;&amp; ctrl.target.type !== 'availability'">
+	<div class="gf-form-inline">
 		<div class="gf-form">
-			<label class="gf-form-label">Multiple series aggregation</label>
+			<label class="gf-form-label query-keyword fix-query-keyword">Metric name</label>
+			<metric-segment-model property="ctrl.target.id" get-options="ctrl.getMetricOptions()" on-change="ctrl.onChangeInternal()" css-class="max-width-30"></metric-segment-model>
+		</div>
+		<gf-form-switch ng-if="ctrl.target.type !== 'availability'" class="gf-form query-keyword fix-query-keyword" label="Rate" checked="ctrl.target.rate" switch-class="max-width-6" on-change="ctrl.onChangeInternal()"></gf-form-switch>
+	</div>
+	<div class="gf-form-inline" ng-show="ctrl.caps.QUERY_STATS_POST_ENDPOINTS" ng-if="ctrl.panel.type === 'singlestat' &amp;&amp; ctrl.target.type !== 'availability'">
+		<div class="gf-form">
+			<label class="gf-form-label query-keyword fix-query-keyword">Multiple series aggregation</label>
 			<select class="gf-form-input" ng-model="ctrl.target.seriesAggFn" ng-change="ctrl.onChangeInternal()">
 				<option ng-repeat="fn in ctrl.seriesAggFns" value="{{fn.value}}">{{fn.text}}</option>
 			</select>
 		</div>
 		<div class="gf-form">
-			<label class="gf-form-label">Time aggregation</label>
+			<label class="gf-form-label query-keyword fix-query-keyword">Time aggregation</label>
 			<select class="gf-form-input" ng-model="ctrl.target.timeAggFn" ng-change="ctrl.onChangeInternal()">
 				<option ng-repeat="fn in ctrl.timeAggFns" value="{{fn.value}}">{{fn.text}}</option>
 			</select>

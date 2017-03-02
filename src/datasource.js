@@ -2,6 +2,7 @@ import _ from "lodash";
 import {Variables} from './variables';
 import {Capabilities} from './capabilities';
 import {QueryProcessor} from './queryProcessor';
+import {modelToString as tagsModelToString} from './tagsKVPairsController';
 
 export class HawkularDatasource {
 
@@ -25,30 +26,38 @@ export class HawkularDatasource {
       "counter": "counters",
       "availability": "availability"
     };
-    let variables = new Variables(templateSrv);
-    this.capabilitiesPromise = this.queryVersion()
-      .then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
+    this.variables = new Variables(templateSrv);
+    this.capabilitiesPromise = this.queryVersion().then(version => new Capabilities(version));
+    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
   }
 
   query(options) {
-    let validTargets = options.targets
+    const validTargets = options.targets
       .filter(target => !target.hide)
-      .filter(target => (target.queryBy === 'tags' && target.tags.length > 0) || target.target !== 'select metric');
+      .map(target => {
+        if (target.id === undefined && target.target !== 'select metric') {
+          // backward compatibility
+          target.id = target.target;
+        } else if (target.id === '-- none --') {
+          delete target.id;
+        }
+        return target;
+      })
+      .filter(target => target.id !== undefined
+         || (target.tags !== undefined && target.tags.length > 0)
+         || (target.tagsQL !== undefined && target.tagsQL.length > 0));
 
     if (validTargets.length === 0) {
       return this.q.when({data: []});
     }
 
-    let promises = validTargets.map(target => {
+    const promises = validTargets.map(target => {
       return this.queryProcessor.run(target, options);
     });
 
     return this.q.all(promises).then(responses => {
-      let flatten = [].concat.apply([], responses)
-        .sort(function(m1, m2) {
-          return m1.target.localeCompare(m2.target);
-        });
+      const flatten = [].concat.apply([], responses)
+        .sort((m1, m2) => m1.target.localeCompare(m2.target));
       return {data: flatten};
     });
   }
@@ -80,7 +89,7 @@ export class HawkularDatasource {
       headers: this.headers
     }).then(response => response.status == 200 ? response.data[0].data : [])
     .then(data => data.map(dp => {
-      var annot = {
+      let annot = {
         annotation: options.annotation,
         time: dp.timestamp,
         title: options.annotation.name,
@@ -88,8 +97,8 @@ export class HawkularDatasource {
         text: dp.value
       };
       if (dp.tags) {
-        var tags = [];
-        for (var key in dp.tags) {
+        let tags = [];
+        for (let key in dp.tags) {
           if (dp.tags.hasOwnProperty(key)) {
             tags.push(dp.tags[key].replace(' ', '_'));
           }
@@ -103,12 +112,19 @@ export class HawkularDatasource {
   }
 
   suggestQueries(target) {
+    let url = this.url + '/metrics?type=' + target.type;
+    if (target.tagsQL && target.tagsQL.length > 0) {
+      url += "&tags=" + this.variables.resolveToString(target.tagsQL, {});
+    } else if (target.tags && target.tags.length > 0) {
+      url += "&tags=" + tagsModelToString(target.tags, this.variables, {});
+    }
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics?type=' + target.type,
+      url: url,
       method: 'GET',
       headers: this.headers
-    }).then(result => {
-      return result.data.map(m => m.id)
+    }).then(response => response.status == 200 ? response.data : [])
+    .then(result => {
+      return result.map(m => m.id)
         .sort()
         .map(id => {
           return {text: id, value: id};
@@ -118,25 +134,29 @@ export class HawkularDatasource {
 
   suggestTags(type, key) {
     if (!key) {
-      // Need at least some characters typed in order to suggest something
       return this.q.when([]);
     }
     return this.backendSrv.datasourceRequest({
       url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
       method: 'GET',
       headers: this.headers
-    }).then(result => {
-      if (result.data.hasOwnProperty(key)) {
-        return [' *'].concat(result.data[key]).map(value => {
-          return {text: value, value: value};
-        });
-      }
-      return [];
-    });
+    }).then(result => result.data.hasOwnProperty(key) ? result.data[key] : [])
+    .then(tags => tags.map(tag => {
+      return {text: tag, value: tag};
+    }));
+  }
+
+  suggestTagKeys(type) {
+    return this.backendSrv.datasourceRequest({
+      url: this.url + '/metrics/tags',
+      method: 'GET',
+      headers: this.headers
+    }).then(response => response.status == 200 ? response.data : [])
+    .then(result => result.map(key => ({text: key, value: key})));
   }
 
   metricFindQuery(query) {
-    var params = "";
+    let params = "";
     if (query !== undefined) {
       if (query.substr(0, 5) === "tags/") {
         return this.findTags(query.substr(5).trim());
@@ -164,10 +184,10 @@ export class HawkularDatasource {
       method: 'GET',
       headers: this.headers
     }).then(result => {
-      var flatTags = [];
+      let flatTags = [];
       if (result.data) {
-        var data = result.data;
-        for (var property in data) {
+        let data = result.data;
+        for (let property in data) {
           if (data.hasOwnProperty(property)) {
             flatTags = flatTags.concat(data[property]);
           }
