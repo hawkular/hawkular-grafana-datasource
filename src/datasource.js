@@ -51,15 +51,10 @@ export class HawkularDatasource {
       return this.q.when({data: []});
     }
 
-    const promises = validTargets.map(target => {
-      return this.queryProcessor.run(target, options);
-    });
+    const promises = validTargets.map(target => this.queryProcessor.run(target, options));
 
-    return this.q.all(promises).then(responses => {
-      const flatten = [].concat.apply([], responses)
-        .sort((m1, m2) => m1.target.localeCompare(m2.target));
-      return {data: flatten};
-    });
+    return this.q.all(promises)
+      .then(responses => ({data: _.flatten(responses).sort((m1, m2) => m1.target.localeCompare(m2.target))}));
   }
 
   testDatasource() {
@@ -202,7 +197,7 @@ export class HawkularDatasource {
   runWithResolvedVariables(target, func) {
     const resolved = this.variables.resolve(target, {});
     return this.q.all(resolved.map(p => func(p)))
-      .then(result => [].concat.apply([], result));
+      .then(result => _.flatten(result));
   }
 
   queryVersion() {
