@@ -31,6 +31,20 @@ describe('TagsQL', () => {
     done();
   });
 
+  it('should convert segments with not exist to string', done => {
+    const segments = [
+      { type: 'key', value: 'hostname' },
+      { type: 'operator', value: 'doesn\'t exist' },
+      { type: 'condition', value: 'AND' },
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: '!=' },
+      { type: 'value', value: 'unknown' }
+    ];
+    const result = segmentsToString(segments);
+    expect(result).to.deep.equal("NOT hostname AND pod!=unknown");
+    done();
+  });
+
   it('should convert empty string to empty segments', done => {
     const result = stringToSegments("", segmentFactory);
     expect(result).to.deep.equal([]);
@@ -120,6 +134,26 @@ describe('TagsQL', () => {
     ];
     const result = segmentsToString(segments);
     expect(result).to.deep.equal("hostname AND pod NOT IN [abc,def]");
+    done();
+  });
+
+  it('should convert segment with enumeration and plus button to string', done => {
+    const segments = [
+      { type: 'key', value: 'hostname' },
+      { type: 'operator', value: 'is in' },
+      { type: 'value', value: 'alpha' },
+      { type: 'value', value: 'beta' },
+      { type: 'plus-button', value: '' },
+      { type: 'condition', value: 'AND' },
+      { type: 'key', value: 'pod' },
+      { type: 'operator', value: 'is not in' },
+      { type: 'value', value: 'abc' },
+      { type: 'value', value: 'def' },
+      { type: 'plus-button', value: '' },
+      { type: 'plus-button', value: '' }
+    ];
+    const result = segmentsToString(segments);
+    expect(result).to.deep.equal("hostname IN [alpha,beta] AND pod NOT IN [abc,def]");
     done();
   });
 

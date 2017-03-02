@@ -203,15 +203,6 @@ export function convertFromKVPairs(kvTags) {
   }).join(' AND ');
 }
 
-function valueToString(value) {
-  if ((value.charAt(0) === "'" && value.charAt(value.length-1) === "'")
-      || value.match(/^\$?[a-zA-Z0-9]+$/g)) {
-    // Variable, simple literal or already single-quoted => keep as is
-    return value;
-  }
-  return "'" + value + "'";
-}
-
 // Example:
 // Input segment values: ["fruit", "is in", "pear", "apple", "peach", "<plus-button>", "AND", "color", "=", "green", "<plus-button>"]
 // Output string: "fruit IN [pear, apple, peach] AND color=green"
@@ -261,6 +252,15 @@ function valuesToString(segments, i) {
     values: values,
     i: i
   };
+}
+
+function valueToString(value) {
+  if ((value.charAt(0) === "'" && value.charAt(value.length-1) === "'")
+      || value.match(/^\$?[a-zA-Z0-9]+$/g)) {
+    // Variable, simple literal or already single-quoted => keep as is
+    return value;
+  }
+  return "'" + value + "'";
 }
 
 // Example:
