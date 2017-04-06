@@ -113,7 +113,7 @@ export class TagsQLController {
         index--;
       }
       while (nextSegment < segments.length) {
-        if (segments[nextSegment].type === 'plus-button') {
+        if (nextSegment === segments.length - 1) {
           break;
         }
         if (segments[nextSegment].type === 'condition') {
