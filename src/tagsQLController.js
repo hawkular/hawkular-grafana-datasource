@@ -113,7 +113,7 @@ export class TagsQLController {
         index--;
       }
       while (nextSegment < segments.length) {
-        if (segments[nextSegment].type === 'plus-button') {
+        if (nextSegment === segments.length - 1) {
           break;
         }
         if (segments[nextSegment].type === 'condition') {
@@ -256,7 +256,7 @@ function valuesToString(segments, i) {
 
 function valueToString(value) {
   if ((value.charAt(0) === "'" && value.charAt(value.length-1) === "'")
-      || value.match(/^\$?[a-zA-Z0-9]+$/g)) {
+      || value.match(/^\$?[a-zA-Z0-9_]+$/g)) {
     // Variable, simple literal or already single-quoted => keep as is
     return value;
   }
@@ -338,7 +338,7 @@ function readWord(strTags, cursor) {
     cursor = skipWhile(strTags, first+1, c => c !== "'") + 1;
     return { cursor: cursor, value: strTags.substr(first, cursor - first) };
   }
-  const word = remaining.match(/^(\$?[a-zA-Z0-9]*)/)[0];
+  const word = remaining.match(/^(\$?[a-zA-Z0-9_]*)/)[0];
   cursor += word.length;
   return { cursor: cursor, value: word };
 }
