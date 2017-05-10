@@ -24,8 +24,8 @@
         "url": "https://github.com/hawkular/hawkular-grafana-datasource"
       }
     ],
-    "version": "1.0.7",
-    "updated": "2017-02-02"
+    "version": "1.0.8",
+    "updated": "2017-05-10"
   },
   "dependencies": {
     "grafanaVersion": "3.x.x",

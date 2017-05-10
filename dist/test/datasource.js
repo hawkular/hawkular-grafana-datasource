@@ -17,6 +17,8 @@ var _capabilities = require('./capabilities');
 
 var _queryProcessor = require('./queryProcessor');
 
+var _tagsKVPairsController = require('./tagsKVPairsController');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -44,11 +46,11 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       "counter": "counters",
       "availability": "availability"
     };
-    var variables = new _variables.Variables(templateSrv);
+    this.variables = new _variables.Variables(templateSrv);
     this.capabilitiesPromise = this.queryVersion().then(function (version) {
       return new _capabilities.Capabilities(version);
     });
-    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
+    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, this.variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
   }
 
   _createClass(HawkularDatasource, [{
@@ -58,8 +60,16 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
 
       var validTargets = options.targets.filter(function (target) {
         return !target.hide;
+      }).map(function (target) {
+        if (target.id === undefined && target.target !== 'select metric') {
+          // backward compatibility
+          target.id = target.target;
+        } else if (target.id === '-- none --') {
+          delete target.id;
+        }
+        return target;
       }).filter(function (target) {
-        return target.queryBy === 'tags' && target.tags.length > 0 || target.target !== 'select metric';
+        return target.id !== undefined || target.tags !== undefined && target.tags.length > 0 || target.tagsQL !== undefined && target.tagsQL.length > 0;
       });
 
       if (validTargets.length === 0) {
@@ -71,10 +81,9 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       });
 
       return this.q.all(promises).then(function (responses) {
-        var flatten = [].concat.apply([], responses).sort(function (m1, m2) {
-          return m1.target.localeCompare(m2.target);
-        });
-        return { data: flatten };
+        return { data: _lodash2.default.flatten(responses).sort(function (m1, m2) {
+            return m1.target.localeCompare(m2.target);
+          }) };
       });
     }
   }, {
@@ -134,12 +143,20 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
   }, {
     key: 'suggestQueries',
     value: function suggestQueries(target) {
+      var url = this.url + '/metrics?type=' + target.type;
+      if (target.tagsQL && target.tagsQL.length > 0) {
+        url += "&tags=" + this.variables.resolveToString(target.tagsQL, {});
+      } else if (target.tags && target.tags.length > 0) {
+        url += "&tags=" + (0, _tagsKVPairsController.modelToString)(target.tags, this.variables, {});
+      }
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/metrics?type=' + target.type,
+        url: url,
         method: 'GET',
         headers: this.headers
+      }).then(function (response) {
+        return response.status == 200 ? response.data : [];
       }).then(function (result) {
-        return result.data.map(function (m) {
+        return result.map(function (m) {
           return m.id;
         }).sort().map(function (id) {
           return { text: id, value: id };
@@ -150,7 +167,6 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     key: 'suggestTags',
     value: function suggestTags(type, key) {
       if (!key) {
-        // Need at least some characters typed in order to suggest something
         return this.q.when([]);
       }
       return this.backendSrv.datasourceRequest({
@@ -158,17 +174,33 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
         method: 'GET',
         headers: this.headers
       }).then(function (result) {
-        if (result.data.hasOwnProperty(key)) {
-          return [' *'].concat(result.data[key]).map(function (value) {
-            return { text: value, value: value };
-          });
-        }
-        return [];
+        return result.data.hasOwnProperty(key) ? result.data[key] : [];
+      }).then(function (tags) {
+        return tags.map(function (tag) {
+          return { text: tag, value: tag };
+        });
+      });
+    }
+  }, {
+    key: 'suggestTagKeys',
+    value: function suggestTagKeys(type) {
+      return this.backendSrv.datasourceRequest({
+        url: this.url + '/metrics/tags',
+        method: 'GET',
+        headers: this.headers
+      }).then(function (response) {
+        return response.status == 200 ? response.data : [];
+      }).then(function (result) {
+        return result.map(function (key) {
+          return { text: key, value: key };
+        });
       });
     }
   }, {
     key: 'metricFindQuery',
     value: function metricFindQuery(query) {
+      var _this2 = this;
+
       var params = "";
       if (query !== undefined) {
         if (query.substr(0, 5) === "tags/") {
@@ -180,36 +212,52 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
           params = "?" + query;
         }
       }
-      return this.backendSrv.datasourceRequest({
-        url: this.url + '/metrics' + params,
-        method: 'GET',
-        headers: this.headers
-      }).then(function (result) {
-        return _lodash2.default.map(result.data, function (metric) {
-          return { text: metric.id, value: metric.id };
+      return this.runWithResolvedVariables(params, function (p) {
+        return _this2.backendSrv.datasourceRequest({
+          url: _this2.url + '/metrics' + p,
+          method: 'GET',
+          headers: _this2.headers
+        }).then(function (result) {
+          return _lodash2.default.map(result.data, function (metric) {
+            return { text: metric.id, value: metric.id };
+          });
         });
       });
     }
   }, {
     key: 'findTags',
     value: function findTags(pattern) {
-      return this.backendSrv.datasourceRequest({
-        url: this.url + '/metrics/tags/' + pattern,
-        method: 'GET',
-        headers: this.headers
-      }).then(function (result) {
-        var flatTags = [];
-        if (result.data) {
-          var data = result.data;
-          for (var property in data) {
-            if (data.hasOwnProperty(property)) {
-              flatTags = flatTags.concat(data[property]);
+      var _this3 = this;
+
+      return this.runWithResolvedVariables(pattern, function (p) {
+        return _this3.backendSrv.datasourceRequest({
+          url: _this3.url + '/metrics/tags/' + p,
+          method: 'GET',
+          headers: _this3.headers
+        }).then(function (result) {
+          var flatTags = [];
+          if (result.data) {
+            var data = result.data;
+            for (var property in data) {
+              if (data.hasOwnProperty(property)) {
+                flatTags = flatTags.concat(data[property]);
+              }
             }
           }
-        }
-        return flatTags.map(function (tag) {
-          return { text: tag, value: tag };
+          return flatTags.map(function (tag) {
+            return { text: tag, value: tag };
+          });
         });
+      });
+    }
+  }, {
+    key: 'runWithResolvedVariables',
+    value: function runWithResolvedVariables(target, func) {
+      var resolved = this.variables.resolve(target, {});
+      return this.q.all(resolved.map(function (p) {
+        return func(p);
+      })).then(function (result) {
+        return _lodash2.default.flatten(result);
       });
     }
   }, {

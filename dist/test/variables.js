@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
@@ -16,7 +16,7 @@ var Variables = exports.Variables = function () {
   }
 
   _createClass(Variables, [{
-    key: 'resolve',
+    key: "resolve",
     value: function resolve(target, options) {
       var _this = this;
 
@@ -39,7 +39,20 @@ var Variables = exports.Variables = function () {
       return resolved;
     }
   }, {
-    key: 'getVarValues',
+    key: "resolveToString",
+    value: function resolveToString(target, options) {
+      var _this2 = this;
+
+      var variables = options.scopedVars || this.templateSrv.variables;
+      return target.replace(/\$\w+/g, function (name) {
+        var values = _this2.getVarValues(name, variables);
+        return values.map(function (v) {
+          return "'" + v + "'";
+        }).join(',');
+      });
+    }
+  }, {
+    key: "getVarValues",
     value: function getVarValues(name, variables) {
       var values = this.templateSrv.replace(name, variables);
       // result might be in like "{id1,id2,id3}" (as string)
@@ -47,6 +60,11 @@ var Variables = exports.Variables = function () {
         return values.substring(1, values.length - 1).split(',');
       }
       return [values];
+    }
+  }, {
+    key: "exists",
+    value: function exists(name) {
+      return this.templateSrv.variableExists(name);
     }
   }]);
 

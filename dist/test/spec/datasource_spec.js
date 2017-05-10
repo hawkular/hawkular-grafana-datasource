@@ -42,7 +42,7 @@ describe('HawkularDatasource', function () {
     ctx.$q = _q2.default;
     ctx.backendSrv = {};
     ctx.backendSrv.datasourceRequest = function (request) {
-      return ctx.$q.when({ data: { 'Implementation-Version': '1.0.0' } });
+      return ctx.$q.when({ data: { 'Implementation-Version': '0.22.0' } });
     };
     ctx.templateSrv = {
       replace: function replace(target, vars) {
@@ -70,15 +70,13 @@ describe('HawkularDatasource', function () {
         to: 30
       },
       targets: [{
-        target: 'memory',
+        id: 'memory',
         type: 'gauge',
-        rate: false,
-        queryBy: 'ids'
+        rate: false
       }, {
-        target: 'packets',
+        id: 'packets',
         type: 'counter',
-        rate: true,
-        queryBy: 'ids'
+        rate: true
       }]
     };
 
@@ -144,10 +142,9 @@ describe('HawkularDatasource', function () {
         to: 30
       },
       targets: [{
-        target: '$app/memory',
+        id: '$app/memory',
         type: 'gauge',
-        rate: false,
-        queryBy: 'ids'
+        rate: false
       }]
     };
 
@@ -207,8 +204,7 @@ describe('HawkularDatasource', function () {
       targets: [{
         tags: [{ name: 'type', value: 'memory' }, { name: 'host', value: 'myhost' }],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -274,8 +270,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'max',
         tags: [{ name: 'type', value: 'memory' }],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -326,8 +321,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'avg',
         tags: [{ name: 'type', value: 'memory' }],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -378,8 +372,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'live',
         tags: [{ name: 'type', value: 'memory' }],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -431,8 +424,7 @@ describe('HawkularDatasource', function () {
         timeAggFn: 'live',
         tags: [{ name: 'type', value: 'memory' }],
         type: 'gauge',
-        rate: false,
-        queryBy: 'tags'
+        rate: false
       }]
     };
 
@@ -480,9 +472,8 @@ describe('HawkularDatasource', function () {
         to: 30
       },
       targets: [{
-        target: 'myapp/health',
-        type: 'availability',
-        queryBy: 'ids'
+        id: 'myapp/health',
+        type: 'availability'
       }]
     };
 
@@ -627,6 +618,87 @@ describe('HawkularDatasource', function () {
       expect(result[1].title).to.equal("Timeline");
       expect(result[1].tags).to.equal("myItem stop");
       expect(result[1].text).to.equal("stop");
+    }).then(function (v) {
+      return done();
+    }, function (err) {
+      return done(err);
+    });
+  });
+
+  it('should get tags suggestions', function (done) {
+    ctx.backendSrv.datasourceRequest = function (request) {
+      var parser = document.createElement('a');
+      parser.href = request.url;
+      var pathElements = parser.pathname.split('/').filter(function (e) {
+        return e.length != 0;
+      });
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'tags', 'host:*']);
+
+      return ctx.$q.when({
+        status: 200,
+        data: {
+          'host': ['cartago', 'rio']
+        }
+      });
+    };
+
+    ctx.ds.suggestTags('gauge', 'host').then(function (result) {
+      expect(result).to.have.length(2);
+      expect(result[0]).to.deep.equal({ text: 'cartago', value: 'cartago' });
+      expect(result[1]).to.deep.equal({ text: 'rio', value: 'rio' });
+    }).then(function (v) {
+      return done();
+    }, function (err) {
+      return done(err);
+    });
+  });
+
+  it('should get no suggestions on unknown tag', function (done) {
+    ctx.backendSrv.datasourceRequest = function (request) {
+      var parser = document.createElement('a');
+      parser.href = request.url;
+      var pathElements = parser.pathname.split('/').filter(function (e) {
+        return e.length != 0;
+      });
+      expect(pathElements).to.have.length(5);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'tags', 'host:*']);
+      return ctx.$q.when({
+        status: 204,
+        data: {}
+      });
+    };
+    ctx.ds.suggestTags('gauge', 'host').then(function (result) {
+      expect(result).to.have.length(0);
+    }).then(function (v) {
+      return done();
+    }, function (err) {
+      return done(err);
+    });
+  });
+
+  it('should get tag keys suggestions', function (done) {
+    ctx.backendSrv.datasourceRequest = function (request) {
+      var parser = document.createElement('a');
+      parser.href = request.url;
+      var pathElements = parser.pathname.split('/').filter(function (e) {
+        return e.length != 0;
+      });
+      expect(pathElements).to.have.length(4);
+      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
+      expect(pathElements.slice(2)).to.deep.equal(['metrics', 'tags']);
+      return ctx.$q.when({
+        status: 200,
+        data: ['host', 'app']
+      });
+    };
+
+    ctx.ds.suggestTagKeys().then(function (result) {
+      expect(result).to.have.length(2);
+      expect(result[0]).to.deep.equal({ text: 'host', value: 'host' });
+      expect(result[1]).to.deep.equal({ text: 'app', value: 'app' });
     }).then(function (v) {
       return done();
     }, function (err) {

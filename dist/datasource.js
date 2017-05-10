@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['lodash', './variables', './capabilities', './queryProcessor'], function (_export, _context) {
+System.register(['lodash', './variables', './capabilities', './queryProcessor', './tagsKVPairsController'], function (_export, _context) {
   "use strict";
 
-  var _, Variables, Capabilities, QueryProcessor, _createClass, HawkularDatasource;
+  var _, Variables, Capabilities, QueryProcessor, tagsModelToString, _createClass, HawkularDatasource;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -20,6 +20,8 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
       Capabilities = _capabilities.Capabilities;
     }, function (_queryProcessor) {
       QueryProcessor = _queryProcessor.QueryProcessor;
+    }, function (_tagsKVPairsController) {
+      tagsModelToString = _tagsKVPairsController.modelToString;
     }],
     execute: function () {
       _createClass = function () {
@@ -63,11 +65,11 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
             "counter": "counters",
             "availability": "availability"
           };
-          var variables = new Variables(templateSrv);
+          this.variables = new Variables(templateSrv);
           this.capabilitiesPromise = this.queryVersion().then(function (version) {
             return new Capabilities(version);
           });
-          this.queryProcessor = new QueryProcessor($q, backendSrv, variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
+          this.queryProcessor = new QueryProcessor($q, backendSrv, this.variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
         }
 
         _createClass(HawkularDatasource, [{
@@ -77,8 +79,16 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
 
             var validTargets = options.targets.filter(function (target) {
               return !target.hide;
+            }).map(function (target) {
+              if (target.id === undefined && target.target !== 'select metric') {
+                // backward compatibility
+                target.id = target.target;
+              } else if (target.id === '-- none --') {
+                delete target.id;
+              }
+              return target;
             }).filter(function (target) {
-              return target.queryBy === 'tags' && target.tags.length > 0 || target.target !== 'select metric';
+              return target.id !== undefined || target.tags !== undefined && target.tags.length > 0 || target.tagsQL !== undefined && target.tagsQL.length > 0;
             });
 
             if (validTargets.length === 0) {
@@ -90,10 +100,9 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
             });
 
             return this.q.all(promises).then(function (responses) {
-              var flatten = [].concat.apply([], responses).sort(function (m1, m2) {
-                return m1.target.localeCompare(m2.target);
-              });
-              return { data: flatten };
+              return { data: _.flatten(responses).sort(function (m1, m2) {
+                  return m1.target.localeCompare(m2.target);
+                }) };
             });
           }
         }, {
@@ -153,12 +162,20 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
         }, {
           key: 'suggestQueries',
           value: function suggestQueries(target) {
+            var url = this.url + '/metrics?type=' + target.type;
+            if (target.tagsQL && target.tagsQL.length > 0) {
+              url += "&tags=" + this.variables.resolveToString(target.tagsQL, {});
+            } else if (target.tags && target.tags.length > 0) {
+              url += "&tags=" + tagsModelToString(target.tags, this.variables, {});
+            }
             return this.backendSrv.datasourceRequest({
-              url: this.url + '/metrics?type=' + target.type,
+              url: url,
               method: 'GET',
               headers: this.headers
+            }).then(function (response) {
+              return response.status == 200 ? response.data : [];
             }).then(function (result) {
-              return result.data.map(function (m) {
+              return result.map(function (m) {
                 return m.id;
               }).sort().map(function (id) {
                 return { text: id, value: id };
@@ -169,7 +186,6 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
           key: 'suggestTags',
           value: function suggestTags(type, key) {
             if (!key) {
-              // Need at least some characters typed in order to suggest something
               return this.q.when([]);
             }
             return this.backendSrv.datasourceRequest({
@@ -177,17 +193,33 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
               method: 'GET',
               headers: this.headers
             }).then(function (result) {
-              if (result.data.hasOwnProperty(key)) {
-                return [' *'].concat(result.data[key]).map(function (value) {
-                  return { text: value, value: value };
-                });
-              }
-              return [];
+              return result.data.hasOwnProperty(key) ? result.data[key] : [];
+            }).then(function (tags) {
+              return tags.map(function (tag) {
+                return { text: tag, value: tag };
+              });
+            });
+          }
+        }, {
+          key: 'suggestTagKeys',
+          value: function suggestTagKeys(type) {
+            return this.backendSrv.datasourceRequest({
+              url: this.url + '/metrics/tags',
+              method: 'GET',
+              headers: this.headers
+            }).then(function (response) {
+              return response.status == 200 ? response.data : [];
+            }).then(function (result) {
+              return result.map(function (key) {
+                return { text: key, value: key };
+              });
             });
           }
         }, {
           key: 'metricFindQuery',
           value: function metricFindQuery(query) {
+            var _this2 = this;
+
             var params = "";
             if (query !== undefined) {
               if (query.substr(0, 5) === "tags/") {
@@ -199,36 +231,52 @@ System.register(['lodash', './variables', './capabilities', './queryProcessor'],
                 params = "?" + query;
               }
             }
-            return this.backendSrv.datasourceRequest({
-              url: this.url + '/metrics' + params,
-              method: 'GET',
-              headers: this.headers
-            }).then(function (result) {
-              return _.map(result.data, function (metric) {
-                return { text: metric.id, value: metric.id };
+            return this.runWithResolvedVariables(params, function (p) {
+              return _this2.backendSrv.datasourceRequest({
+                url: _this2.url + '/metrics' + p,
+                method: 'GET',
+                headers: _this2.headers
+              }).then(function (result) {
+                return _.map(result.data, function (metric) {
+                  return { text: metric.id, value: metric.id };
+                });
               });
             });
           }
         }, {
           key: 'findTags',
           value: function findTags(pattern) {
-            return this.backendSrv.datasourceRequest({
-              url: this.url + '/metrics/tags/' + pattern,
-              method: 'GET',
-              headers: this.headers
-            }).then(function (result) {
-              var flatTags = [];
-              if (result.data) {
-                var data = result.data;
-                for (var property in data) {
-                  if (data.hasOwnProperty(property)) {
-                    flatTags = flatTags.concat(data[property]);
+            var _this3 = this;
+
+            return this.runWithResolvedVariables(pattern, function (p) {
+              return _this3.backendSrv.datasourceRequest({
+                url: _this3.url + '/metrics/tags/' + p,
+                method: 'GET',
+                headers: _this3.headers
+              }).then(function (result) {
+                var flatTags = [];
+                if (result.data) {
+                  var data = result.data;
+                  for (var property in data) {
+                    if (data.hasOwnProperty(property)) {
+                      flatTags = flatTags.concat(data[property]);
+                    }
                   }
                 }
-              }
-              return flatTags.map(function (tag) {
-                return { text: tag, value: tag };
+                return flatTags.map(function (tag) {
+                  return { text: tag, value: tag };
+                });
               });
+            });
+          }
+        }, {
+          key: 'runWithResolvedVariables',
+          value: function runWithResolvedVariables(target, func) {
+            var resolved = this.variables.resolve(target, {});
+            return this.q.all(resolved.map(function (p) {
+              return func(p);
+            })).then(function (result) {
+              return _.flatten(result);
             });
           }
         }, {

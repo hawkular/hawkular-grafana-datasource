@@ -1,9 +1,9 @@
 'use strict';
 
-System.register([], function (_export, _context) {
+System.register(['./tagsKVPairsController'], function (_export, _context) {
   "use strict";
 
-  var _createClass, QueryProcessor;
+  var tagsModelToString, _createClass, QueryProcessor;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -12,7 +12,9 @@ System.register([], function (_export, _context) {
   }
 
   return {
-    setters: [],
+    setters: [function (_tagsKVPairsController) {
+      tagsModelToString = _tagsKVPairsController.modelToString;
+    }],
     execute: function () {
       _createClass = function () {
         function defineProperties(target, props) {
@@ -63,8 +65,8 @@ System.register([], function (_export, _context) {
                 order: 'ASC'
               };
               var multipleMetrics = true;
-              if (target.queryBy === 'ids') {
-                var metricIds = _this.variables.resolve(target.target, options);
+              if (target.id) {
+                var metricIds = _this.variables.resolve(target.id, options);
                 if (caps.QUERY_POST_ENDPOINTS) {
                   if (!target.seriesAggFn || target.seriesAggFn === 'none') {
                     postData.ids = metricIds;
@@ -81,10 +83,19 @@ System.register([], function (_export, _context) {
                   return _this.rawQueryLegacy(target, options.range, metricIds);
                 }
               } else {
-                if (target.tags.length === 0) {
-                  return _this.q.when([]);
+                if (caps.TAGS_QUERY_LANGUAGE) {
+                  if (target.tagsQL !== undefined && target.tagsQL.length > 0) {
+                    postData.tags = _this.variables.resolveToString(target.tagsQL, options);
+                  } else {
+                    return _this.q.when([]);
+                  }
+                } else {
+                  if (target.tags !== undefined && target.tags.length > 0) {
+                    postData.tags = tagsModelToString(target.tags, _this.variables, options);
+                  } else {
+                    return _this.q.when([]);
+                  }
                 }
-                postData.tags = _this.hawkularFormatTags(target.tags, options);
                 if (!target.seriesAggFn || target.seriesAggFn === 'none') {
                   return _this.rawQuery(target, postData);
                 } else if (target.timeAggFn == 'live') {
@@ -98,25 +109,9 @@ System.register([], function (_export, _context) {
             });
           }
         }, {
-          key: 'hawkularFormatTags',
-          value: function hawkularFormatTags(tags, options) {
-            var _this2 = this;
-
-            return tags.map(function (tag) {
-              var value;
-              if (tag.value === ' *') {
-                // '*' character get a special treatment in grafana so we had to use ' *' instead
-                value = '*';
-              } else {
-                value = _this2.variables.resolve(tag.value, options).join('|');
-              }
-              return tag.name + ':' + value;
-            }).join(',');
-          }
-        }, {
           key: 'rawQuery',
           value: function rawQuery(target, postData) {
-            var _this3 = this;
+            var _this2 = this;
 
             var uri = [this.typeResources[target.type], // gauges or counters
             target.rate ? 'rate' : 'raw', // raw or rate
@@ -129,50 +124,50 @@ System.register([], function (_export, _context) {
               method: 'POST',
               headers: this.headers
             }).then(function (response) {
-              return _this3.processRawResponse(target, response.status == 200 ? response.data : []);
+              return _this2.processRawResponse(target, response.status == 200 ? response.data : []);
             });
           }
         }, {
           key: 'rawQueryLegacy',
           value: function rawQueryLegacy(target, range, metricIds) {
-            var _this4 = this;
+            var _this3 = this;
 
             return this.q.all(metricIds.map(function (metric) {
-              var uri = [_this4.typeResources[target.type], // gauges, counters or availability
+              var uri = [_this3.typeResources[target.type], // gauges, counters or availability
               encodeURIComponent(metric).replace('+', '%20'), // metric name
               'data'];
-              var url = _this4.url + '/' + uri.join('/');
+              var url = _this3.url + '/' + uri.join('/');
 
-              return _this4.backendSrv.datasourceRequest({
+              return _this3.backendSrv.datasourceRequest({
                 url: url,
                 params: {
                   start: range.from.valueOf(),
                   end: range.to.valueOf()
                 },
                 method: 'GET',
-                headers: _this4.headers
+                headers: _this3.headers
               }).then(function (response) {
-                return _this4.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []);
+                return _this3.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []);
               });
             }));
           }
         }, {
           key: 'processRawResponse',
           value: function processRawResponse(target, data) {
-            var _this5 = this;
+            var _this4 = this;
 
             return data.map(function (timeSerie) {
               return {
                 refId: target.refId,
                 target: timeSerie.id,
-                datapoints: timeSerie.data.map(target.type == 'availability' ? _this5.availMapping : _this5.numericMapping)
+                datapoints: timeSerie.data.map(target.type == 'availability' ? _this4.availMapping : _this4.numericMapping)
               };
             });
           }
         }, {
           key: 'processRawResponseLegacy',
           value: function processRawResponseLegacy(target, metric, data) {
-            var datapoints;
+            var datapoints = void 0;
             if (target.type == 'availability') {
               datapoints = data.map(this.availMapping);
             } else if (!target.rate) {
@@ -203,11 +198,11 @@ System.register([], function (_export, _context) {
         }, {
           key: 'singleStatQuery',
           value: function singleStatQuery(target, postData) {
-            var _this6 = this;
+            var _this5 = this;
 
             // Query for singlestat => we just ask for a single bucket
             // But because of that we need to override Grafana behaviour, and manage ourselves the min/max/avg/etc. selection
-            var fnBucket;
+            var fnBucket = void 0;
             if (target.timeAggFn == 'avg') {
               fnBucket = function fnBucket(bucket) {
                 return bucket.avg;
@@ -231,7 +226,7 @@ System.register([], function (_export, _context) {
               method: 'POST',
               headers: this.headers
             }).then(function (response) {
-              return _this6.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
+              return _this5.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
             });
           }
         }, {
@@ -248,7 +243,7 @@ System.register([], function (_export, _context) {
         }, {
           key: 'singleStatLiveQuery',
           value: function singleStatLiveQuery(target, postData) {
-            var _this7 = this;
+            var _this6 = this;
 
             var uri = [this.typeResources[target.type], // gauges, counters or availability
             target.rate ? 'rate' : 'raw', // raw or rate
@@ -262,13 +257,13 @@ System.register([], function (_export, _context) {
               method: 'POST',
               headers: this.headers
             }).then(function (response) {
-              return _this7.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
+              return _this6.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
             });
           }
         }, {
           key: 'processSingleStatLiveResponse',
           value: function processSingleStatLiveResponse(target, data) {
-            var reduceFunc;
+            var reduceFunc = void 0;
             if (target.seriesAggFn === 'sum') {
               reduceFunc = function reduceFunc(presentValues) {
                 return presentValues.reduce(function (a, b) {
@@ -282,7 +277,7 @@ System.register([], function (_export, _context) {
                 }) / presentValues.length;
               };
             }
-            var datapoints;
+            var datapoints = void 0;
             var latestPoints = data.filter(function (timeSeries) {
               return timeSeries.data.length > 0;
             }).map(function (timeSeries) {

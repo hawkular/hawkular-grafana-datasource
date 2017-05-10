@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_export, _context) {
+System.register(['app/plugins/sdk', './css/query-editor.css!', './capabilities', './tagsKVPairsController', './tagsQLController'], function (_export, _context) {
   "use strict";
 
-  var QueryCtrl, _createClass, HawkularDatasourceQueryCtrl;
+  var QueryCtrl, Capabilities, TagsKVPairsController, TagsQLController, _createClass, HawkularDatasourceQueryCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -38,7 +38,13 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
   return {
     setters: [function (_appPluginsSdk) {
       QueryCtrl = _appPluginsSdk.QueryCtrl;
-    }, function (_cssQueryEditorCss) {}],
+    }, function (_cssQueryEditorCss) {}, function (_capabilities) {
+      Capabilities = _capabilities.Capabilities;
+    }, function (_tagsKVPairsController) {
+      TagsKVPairsController = _tagsKVPairsController.TagsKVPairsController;
+    }, function (_tagsQLController) {
+      TagsQLController = _tagsQLController.TagsQLController;
+    }],
     execute: function () {
       _createClass = function () {
         function defineProperties(target, props) {
@@ -70,81 +76,54 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
           _this.uiSegmentSrv = uiSegmentSrv;
           _this.$q = $q;
 
-          _this.queryByTagCapability = false;
-          _this.statsPostCapability = false;
+          _this.caps = new Capabilities("");
           _this.datasource.getCapabilities().then(function (caps) {
-            _this.queryByTagCapability = caps.QUERY_BY_TAGS;
-            _this.statsPostCapability = caps.QUERY_STATS_POST_ENDPOINTS;
+            _this.caps = caps;
+            if (caps.TAGS_QUERY_LANGUAGE) {
+              _this.tagsController = new TagsQLController(uiSegmentSrv, _this.datasource, $q, function () {
+                return _this.target;
+              });
+            } else {
+              _this.tagsController = new TagsKVPairsController(uiSegmentSrv, _this.datasource, $q, caps.FETCH_ALL_TAGS, function () {
+                return _this.target;
+              });
+            }
+            _this.tagsSegments = _this.tagsController.initTagsSegments();
           });
 
-          _this.listQueryBy = [{ value: 'ids', text: 'Search by name' }, { value: 'tags', text: 'Search by tags' }];
           _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }, { value: 'availability', text: 'Availability' }];
           _this.seriesAggFns = [{ value: 'none', text: 'None' }, { value: 'sum', text: 'Sum' }, { value: 'avg', text: 'Average' }];
           _this.timeAggFns = [{ value: 'avg', text: 'Average' }, { value: 'min', text: 'Min' }, { value: 'max', text: 'Max' }, { value: 'live', text: 'Live' }];
 
-          _this.target.queryBy = _this.target.queryBy || _this.listQueryBy[0].value;
           _this.target.type = _this.target.type || _this.metricTypes[0].value;
-          _this.target.target = _this.target.target || 'select metric';
+          // backward compatibility: check target.target
+          _this.target.id = _this.target.id || _this.target.target || '-- none --';
+          delete _this.target.target;
           _this.target.rate = _this.target.rate === true;
           _this.target.tags = _this.target.tags || [];
+          _this.target.tagsQL = _this.target.tagsQL || "";
           _this.target.seriesAggFn = _this.target.seriesAggFn || _this.seriesAggFns[0].value;
           _this.target.timeAggFn = _this.target.timeAggFn || _this.timeAggFns[0].value;
-
-          _this.tagsSegments = _.reduce(_this.target.tags, function (list, tag) {
-            list.push(uiSegmentSrv.newKey(tag.name));
-            list.push(uiSegmentSrv.newOperator(':'));
-            list.push(uiSegmentSrv.newKeyValue(tag.value));
-            list.push(uiSegmentSrv.newOperator(','));
-            return list;
-          }, []);
-          _this.tagsSegments.push(uiSegmentSrv.newPlusButton());
-          _this.removeTagsSegment = uiSegmentSrv.newSegment({ fake: true, value: '-- Remove tag --' });
           return _this;
         }
 
         _createClass(HawkularDatasourceQueryCtrl, [{
           key: 'getTagsSegments',
           value: function getTagsSegments(segment, $index) {
-            if (segment.type === 'plus-button') {
-              return this.$q.when([]);
-            } else if (segment.type === 'key') {
-              return this.$q.when([angular.copy(this.removeTagsSegment)]);
-            } else if (segment.type === 'value') {
-              var key = this.tagsSegments[$index - 2].value;
-              return this.datasource.suggestTags(this.target.type, key).then(this.uiSegmentSrv.transformToSegments(false));
-            }
+            return this.tagsController.getTagsSegments(this.tagsSegments, segment, $index);
           }
         }, {
           key: 'tagsSegmentChanged',
-          value: function tagsSegmentChanged(segment, index) {
-            if (segment.value === this.removeTagsSegment.value) {
-              this.tagsSegments.splice(index, 4);
-            } else if (segment.type === 'plus-button') {
-              this.tagsSegments.splice(index, 1, this.uiSegmentSrv.newOperator(','));
-              this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newKeyValue(' *'));
-              this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newOperator(':'));
-              this.tagsSegments.splice(index, 0, this.uiSegmentSrv.newKey(segment.value));
-              this.tagsSegments.push(this.uiSegmentSrv.newPlusButton());
-            } else {
-              this.tagsSegments[index] = segment;
-            }
-            this.tagsToModel();
+          value: function tagsSegmentChanged(segment, $index) {
+            this.tagsController.tagsSegmentChanged(this.tagsSegments, segment, $index);
             this.onChangeInternal();
           }
         }, {
-          key: 'tagsToModel',
-          value: function tagsToModel() {
-            this.target.tags = [];
-            for (var i = 0; i < this.tagsSegments.length - 2; i += 4) {
-              var key = this.tagsSegments[i].value;
-              var val = this.tagsSegments[i + 2].fake ? '*' : this.tagsSegments[i + 2].value || '*';
-              this.target.tags.push({ name: key, value: val });
-            }
-          }
-        }, {
-          key: 'getOptions',
-          value: function getOptions() {
-            return this.datasource.suggestQueries(this.target).then(this.uiSegmentSrv.transformToSegments(false));
+          key: 'getMetricOptions',
+          value: function getMetricOptions() {
+            return this.datasource.suggestQueries(this.target).then(function (metrics) {
+              return [{ value: '-- none --', text: '-- none --' }].concat(metrics);
+            }).then(this.uiSegmentSrv.transformToSegments(false));
             // Options have to be transformed by uiSegmentSrv to be usable by metric-segment-model directive
           }
         }, {
@@ -155,6 +134,23 @@ System.register(['app/plugins/sdk', './css/query-editor.css!'], function (_expor
               this.target.seriesAggFn = this.seriesAggFns[0].value;
             }
             this.panelCtrl.refresh(); // Asks the panel to refresh data.
+          }
+        }, {
+          key: 'toggleEditorMode',
+          value: function toggleEditorMode() {
+            if (this.caps.TAGS_QUERY_LANGUAGE) {
+              this.target.rawTagsQuery = !this.target.rawTagsQuery;
+              if (!this.target.rawTagsQuery) {
+                try {
+                  this.tagsSegments = this.tagsController.initTagsSegments();
+                } catch (err) {
+                  this.target.rawTagsQuery = true;
+                  console.log('Cannot parse query: ' + err);
+                }
+              }
+            } else {
+              this.target.rawTagsQuery = false;
+            }
           }
         }]);
 

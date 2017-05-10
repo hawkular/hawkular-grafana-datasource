@@ -47,5 +47,19 @@ describe('Variables', function () {
     expect(resolved).to.deep.equal(['app_1/1234/memory/usage', 'app_2/1234/memory/usage', 'app_1/5678/memory/usage', 'app_2/5678/memory/usage', 'app_1/90/memory/usage', 'app_2/90/memory/usage']);
     done();
   });
+
+  it('should resolve to string', function (done) {
+    ctx.templateSrv.replace = function (target, vars) {
+      if (target === '$app') {
+        return "{app_1,app_2}";
+      }
+      if (target === '$container') {
+        return "{1234,5678,90}";
+      }
+    };
+    var resolved = ctx.variables.resolveToString("app IN [$app] AND container NOT IN ['a', $container, 'z']", {});
+    expect(resolved).to.deep.equal("app IN ['app_1','app_2'] AND container NOT IN ['a', '1234','5678','90', 'z']");
+    done();
+  });
 });
 //# sourceMappingURL=variables_spec.js.map
