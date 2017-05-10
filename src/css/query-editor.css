@@ -5,3 +5,8 @@
 .gf-form-input {
   min-width: 64px;
 }
+
+.fix-query-keyword {
+  font-weight: normal !important;
+  width: inherit !important;
+}

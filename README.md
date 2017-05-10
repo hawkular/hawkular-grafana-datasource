@@ -9,8 +9,9 @@ This project is the Hawkular Datasource plugin for Grafana 3. It works with:
 
 The datasource URL must point to the Hawkular Metrics service, e.g. `http://myhost:8080/hawkular/metrics`
 
-`direct` access mode only works with standalone Metrics servers currently. If you active it, make sure to allow
-the Grafana server origin in Metrics' configuration.
+Access: both `proxy` and `direct` modes should work in most configurations. Some earlier versions of Hawkular Metrics had a bug with CORS headers, that prevented the use of `direct` mode here.
+If you want to use `direct` mode (that is, direct calls from client browser to Hawkular REST API), and if you have setup CORS restrictions in Hawkular, make sure to allow the Grafana server origin in Metrics' configuration.
+If you're unsure, just use `proxy` mode and you should be fine.
 
 Authentication must be set when working with a Hawkular server. Check the 'Basic Auth' box and fill the user and password fields.
 
@@ -24,22 +25,26 @@ Note that if you configure both Basic Authentication and a Token, only Basic Aut
 
 ### Queries
 
-When adding a Graph panel, the Metrics tab allows you fetch _Gauges_, _Counters_ and _Availability_ metrics in Hawkular. You can either search by metric id or by tag, assuming your version of hawkular-metrics is at least 0.20.0. Prior versions only allow searching by id.
+When adding a Graph panel, the Metrics tab allows you fetch _Gauges_, _Counters_ and _Availability_ metrics in Hawkular. You can search by metric name and/or tag, assuming your version of hawkular-metrics is at least 0.20.0. Prior versions only allow searching by name.
 
-> To know your version of hawkular-metrics, check the "status" endpoint. E.g. `http://myhost:8080/hawkular/metrics/status`
+> To know your version of hawkular-metrics, check the _status_ endpoint. E.g. `http://myhost:8080/hawkular/metrics/status`
 
-When searching by id, you must provide the exact metric id (or use variables, as discussed later).
+Since 0.24.0, hawkular-metrics offers a _"tags query language"_ that allows more accurate queries on tags. If you query with tags and leave the metric name empty, the graph will display all matching metrics:
 
-![Example of query by name](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/search-by-name.png)
+![Tags query language](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/unified-search-tags.png)
 
-When searching by tag, you must provide the tag key, followed by its value or any pattern recognized by Hawkular Metrics. Check how [tagging works in Hawkular](http://www.hawkular.org/hawkular-metrics/docs/user-guide/#_tag_filtering).
+Tags queries are also useful to refine the metric name suggestions (auto-completion), to facilitate usage when Hawkular contains a lot of metrics:
 
-- To add more tag filters, hit the "+" button and repeat the process.
-- To remove a tag, click on its key and select "Remove tag".
+![Refining auto-completion](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/unified-search-name.png)
 
-![Example of query by tag](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/search-by-tag.png)
+To remove a tag expression, click on the tag name and select "Remove tag".
 
-> Note that querying by tag may return multiple series for a single query, as illustrated above.
+A full text editor is available, to use Hawkular's tag query language:
+
+![Tags full text mode](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/unified-search-tags-edit-mode.png)
+
+> When used with hawkular-metrics prior to 0.24.0, tags are still available but the UI switches to the old key-value pairs system.
+
 
 When using a _Singlestat_ panel, some additional options come in. The Hawkular Datasource plugin can perform aggregations on multiple metrics, which usually the _Singlestat_ panel doesn't. It's actually a two-steps aggregation: first, multiple series are reduced into a single one (that is either the sum of its parts, or the average). Then, the resulting series is aggregated over time through another folding: min, max, average etc.
 
@@ -68,7 +73,9 @@ Example of query to get matching tag values
 
 > For instance, type _"tags/type:*"_ to get all of the available tag values for _"type"_.
 
-Once you have set some variables, you can use them in graph queries: either for row or graph duplication, or to display multiple series in a single graph from a single query. This is especially useful when metric names contain some dynamic parts and thus cannot be known in advance.
+Once you have set some variables, you can use them in graph queries by inserting the variable name prefixed with a _$_. It can be used either for row or graph duplication, or to display multiple series in a single graph from a single query. This is especially useful when metric names contain some dynamic parts and thus cannot be known in advance.
+
+They can also be used in tag values, after operators _=_ / _!=_ / _is in_ / _is not in_.
 
 ### Annotations
 

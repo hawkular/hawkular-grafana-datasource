@@ -5,7 +5,7 @@
       "label": "Hawkular-openshift",
       "description": "",
       "type": "datasource",
-      "pluginId": "hawkular",
+      "pluginId": "hawkular-datasource",
       "pluginName": "Hawkular"
     }
   ],
@@ -36,7 +36,7 @@
     },
     {
       "type": "datasource",
-      "id": "hawkular",
+      "id": "hawkular-datasource",
       "name": "Hawkular",
       "version": "1.0.0"
     }
