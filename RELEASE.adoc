@@ -27,9 +27,8 @@ Some stuff to keep in mind:
 - Never commit any code to release. Only allowed commits are master's merge, grunt bump and plugin.json update.
 - Never pull or rebase release back to master. The commit tagged "ReleaseT0" should never appear on master.
 
-= Releasing to the Grafana plugins repository
+= Post-release steps
 
-- In this repo, release branch, edit plugin.json to update the version
-- Commit, push to release
-- On https://github.com/grafana/grafana-plugin-repository, add new version & SHA1 to repo.json
+- Draft a new release: https://github.com/hawkular/hawkular-grafana-datasource/releases
+- Update the Grafana plugins repository: on https://github.com/grafana/grafana-plugin-repository, add new version & SHA1 to repo.json
 - Submit PR
