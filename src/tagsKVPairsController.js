@@ -90,14 +90,14 @@ export function modelToSegments(tags, segmentFactory) {
     }, []);
 }
 
-export function modelToString(tags, variables, options) {
+export function modelToString(tags, variablesHelper, options) {
   return tags.map(tag => {
     let value;
     if (tag.value === ' *') {
       // '*' character get a special treatment in grafana so we had to use ' *' instead
       value = '*';
-    } else if (variables) {
-      value = variables.resolve(tag.value, options).join('|');
+    } else if (variablesHelper) {
+      value = variablesHelper.resolve(tag.value, options).join('|');
     } else {
       value = tag.value;
     }

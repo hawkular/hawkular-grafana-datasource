@@ -1,5 +1,5 @@
 import _ from "lodash";
-import {Variables} from './variables';
+import {VariablesHelper} from './variablesHelper';
 import {Capabilities} from './capabilities';
 import {QueryProcessor} from './queryProcessor';
 import {modelToString as tagsModelToString} from './tagsKVPairsController';
@@ -26,9 +26,9 @@ export class HawkularDatasource {
       "counter": "counters",
       "availability": "availability"
     };
-    this.variables = new Variables(templateSrv);
+    this.variablesHelper = new VariablesHelper(templateSrv);
     this.capabilitiesPromise = this.queryVersion().then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variables, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
+    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
   }
 
   query(options) {
@@ -109,9 +109,9 @@ export class HawkularDatasource {
   suggestQueries(target) {
     let url = this.url + '/metrics?type=' + target.type;
     if (target.tagsQL && target.tagsQL.length > 0) {
-      url += "&tags=" + this.variables.resolveToString(target.tagsQL, {});
+      url += "&tags=" + this.variablesHelper.resolveForQL(target.tagsQL, {});
     } else if (target.tags && target.tags.length > 0) {
-      url += "&tags=" + tagsModelToString(target.tags, this.variables, {});
+      url += "&tags=" + tagsModelToString(target.tags, this.variablesHelper, {});
     }
     return this.backendSrv.datasourceRequest({
       url: url,
@@ -195,7 +195,7 @@ export class HawkularDatasource {
   }
 
   runWithResolvedVariables(target, func) {
-    const resolved = this.variables.resolve(target, {});
+    const resolved = this.variablesHelper.resolve(target, {});
     return this.q.all(resolved.map(p => func(p)))
       .then(result => _.flatten(result));
   }
