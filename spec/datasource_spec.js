@@ -645,6 +645,9 @@ describe('HawkularDatasource', () => {
       }
     };
 
+    ctx.templateSrv.variables = [{
+      name: 'who'
+    }];
     ctx.templateSrv.replace = (target, vars) => {
       expect(target).to.equal('$who');
       return "{your,my}";
