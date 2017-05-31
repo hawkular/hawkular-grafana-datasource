@@ -72,7 +72,7 @@ export class HawkularDatasource {
   }
 
   annotationQuery(options) {
-    const metricIds = this.variables.resolve(options.annotation.query, options);
+    const metricIds = this.variablesHelper.resolve(options.annotation.query, options);
     return this.backendSrv.datasourceRequest({
       url: this.url + '/strings/raw/query',
       data: {
