@@ -36,7 +36,7 @@ describe('HawkularDatasource', () => {
       return ctx.$q.when({data: {'Implementation-Version': '0.22.0'}})
     };
     ctx.templateSrv = {
-        replace: (target, vars) => target
+      replace: (target, vars) => target
     };
     ctx.ds = new Datasource(instanceSettings, ctx.$q, ctx.backendSrv, ctx.templateSrv);
   });
@@ -127,6 +127,9 @@ describe('HawkularDatasource', () => {
       }]
     };
 
+    ctx.templateSrv.variables = [{
+      name: 'app'
+    }];
     ctx.templateSrv.replace = (target, vars) => {
       expect(target).to.equal('$app');
       return "{app_1,app_2}";
