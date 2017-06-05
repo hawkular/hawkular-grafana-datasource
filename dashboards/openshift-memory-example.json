@@ -53,13 +53,12 @@
     {
       "collapse": false,
       "editable": true,
-      "height": "250px",
+      "height": "322px",
       "panels": [
         {
           "content": "<center><p style='font-size: 40pt'>$app</p></center>",
           "editable": true,
           "error": false,
-          "height": "100px",
           "id": 23,
           "isNew": true,
           "links": [],
@@ -128,6 +127,7 @@
                 }
               ],
               "target": "select metric",
+              "tagsQL": "container_name IN [$app] AND descriptor_name='memory/usage'",
               "timeAggFn": "avg",
               "type": "gauge"
             }
@@ -240,6 +240,7 @@
                 }
               ],
               "target": "select metric",
+              "tagsQL": "container_name IN [$app] AND descriptor_name='memory/usage'",
               "timeAggFn": "live",
               "type": "gauge"
             }
@@ -333,6 +334,7 @@
                 }
               ],
               "target": "select metric",
+              "tagsQL": "container_name IN [$app] AND descriptor_name='memory/usage'",
               "timeAggFn": "live",
               "type": "gauge"
             }
@@ -426,6 +428,7 @@
                 }
               ],
               "target": "select metric",
+              "tagsQL": "container_name IN [$app] AND descriptor_name='memory/usage'",
               "timeAggFn": "avg",
               "type": "gauge"
             }
@@ -519,6 +522,7 @@
                 }
               ],
               "target": "select metric",
+              "tagsQL": "container_name IN [$app] AND descriptor_name='memory/usage'",
               "timeAggFn": "avg",
               "type": "gauge"
             }
@@ -612,6 +616,7 @@
                 }
               ],
               "target": "select metric",
+              "tagsQL": "container_name IN [$app] AND descriptor_name='memory/usage'",
               "timeAggFn": "max",
               "type": "gauge"
             }
@@ -705,6 +710,7 @@
                 }
               ],
               "target": "select metric",
+              "tagsQL": "container_name IN [$app] AND descriptor_name='memory/usage'",
               "timeAggFn": "max",
               "type": "gauge"
             }
