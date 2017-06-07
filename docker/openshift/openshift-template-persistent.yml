@@ -115,6 +115,14 @@ objects:
           - containerPort: 3000
             name: http
             protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
           volumeMounts:
           - mountPath: /var/lib/grafana/data
             name: hawkular-grafana-data

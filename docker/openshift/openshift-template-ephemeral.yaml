@@ -102,6 +102,14 @@ objects:
           - containerPort: 3000
             name: http
             protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
         restartPolicy: Always
     triggers:
     - type: ConfigChange
