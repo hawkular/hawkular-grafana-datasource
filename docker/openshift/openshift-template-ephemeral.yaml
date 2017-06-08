@@ -77,6 +77,7 @@ objects:
     replicas: 1
     selector:
       app: hawkular-grafana-ephemeral
+      deploymentconfig: hawkular-grafana
     strategy:
       rollingParams:
         timeoutSeconds: 10800
@@ -87,6 +88,7 @@ objects:
           openshift.io/container.hawkular-grafana.image.entrypoint: '["/run.sh"]'
         labels:
           app: hawkular-grafana-ephemeral
+          deploymentconfig: hawkular-grafana
           group: org.hawkular
       spec:
         containers:
