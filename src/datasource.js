@@ -34,15 +34,7 @@ export class HawkularDatasource {
   query(options) {
     const validTargets = options.targets
       .filter(target => !target.hide)
-      .map(target => {
-        if (target.id === undefined && target.target !== 'select metric') {
-          // backward compatibility
-          target.id = target.target;
-        } else if (target.id === '-- none --') {
-          delete target.id;
-        }
-        return target;
-      })
+      .map(this.sanitizeTarget)
       .filter(target => target.id !== undefined
          || (target.tags !== undefined && target.tags.length > 0)
          || (target.tagsQL !== undefined && target.tagsQL.length > 0));
@@ -55,6 +47,30 @@ export class HawkularDatasource {
 
     return this.q.all(promises)
       .then(responses => ({data: _.flatten(responses).sort((m1, m2) => m1.target.localeCompare(m2.target))}));
+  }
+
+  sanitizeTarget(target) {
+    // Create sane target, providing backward compatibility
+    if (target.id === undefined && target.target !== 'select metric') {
+      target.id = target.target;
+    } else if (target.id === '-- none --') {
+      delete target.id;
+    }
+    delete target.target;
+    target.stats = target.stats || [];
+    target.type = target.type || 'gauge';
+    target.rate = target.rate === true;
+    target.tags = target.tags || [];
+    target.tagsQL = target.tagsQL || "";
+    target.seriesAggFn = target.seriesAggFn || 'none';
+    if (target.raw === undefined) {
+      // Compatibility note: previously default was timeAggFn=avg and seriesAggFn=none
+      if (target.seriesAggFn === 'none' && target.timeAggFn === 'avg') {
+        delete target.timeAggFn;
+      }
+      target.raw = (target.timeAggFn === undefined);
+    }
+    return target;
   }
 
   testDatasource() {
