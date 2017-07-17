@@ -1,5 +1,7 @@
 import {modelToString as tagsModelToString} from './tagsKVPairsController';
 
+const STATS_BUCKETS = 60;
+
 export class QueryProcessor {
 
   constructor(q, backendSrv, variablesHelper, capabilities, url, headers, typeResources) {
@@ -25,16 +27,20 @@ export class QueryProcessor {
       if (target.id) {
         const metricIds = this.variablesHelper.resolve(target.id, options);
         if (caps.QUERY_POST_ENDPOINTS) {
-          if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+          if (target.raw) {
             postData.ids = metricIds;
             return this.rawQuery(target, postData);
           } else if (target.timeAggFn == 'live') {
             // Need to change postData
             return this.singleStatLiveQuery(target, {ids: metricIds, limit: 1});
-          } else {
-            // Need to perform multiple series aggregation
+          } else if (target.timeAggFn) {
+            // Query single stat
             postData.metrics = metricIds;
             return this.singleStatQuery(target, postData);
+          } else {
+            // Query stats for chart
+            postData.metrics = metricIds;
+            return this.statsQuery(target, postData);
           }
         } else {
           return this.rawQueryLegacy(target, options.range, metricIds);
@@ -53,14 +59,17 @@ export class QueryProcessor {
             return this.q.when([]);
           }
         }
-        if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+        if (target.raw) {
           return this.rawQuery(target, postData);
         } else if (target.timeAggFn == 'live') {
           // Need to change postData
           return this.singleStatLiveQuery(target, {tags: postData.tags, limit: 1});
-        } else {
-          // Need to perform multiple series aggregation
+        } else if (target.timeAggFn) {
+          // Query single stat
           return this.singleStatQuery(target, postData);
+        } else {
+          // Query stats for chart
+          return this.statsQuery(target, postData);
         }
       }
     });
@@ -141,6 +150,120 @@ export class QueryProcessor {
       target: metric,
       datapoints: datapoints
     };
+  }
+
+  statsQuery(target, postData) {
+    if (target.seriesAggFn === 'none') {
+      return this.statsQueryUnmerged(target, postData);
+    }
+    const url = `${this.url}/${this.typeResources[target.type]}/stats/query`;
+    delete postData.order;
+    postData.buckets = STATS_BUCKETS;
+    postData.stacked = target.seriesAggFn === 'sum';
+    const percentiles = this.getPercentilesToQuery(target.stats);
+    if (percentiles.length > 0) {
+      postData.percentiles = percentiles.join(',');
+    }
+    return this.backendSrv.datasourceRequest({
+      url: url,
+      data: postData,
+      method: 'POST',
+      headers: this.headers
+    }).then(response => this.processStatsResponse(target, response.status == 200 ? response.data : []));
+  }
+
+  processStatsResponse(target, data) {
+    // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}]
+    return target.stats.map(stat => {
+      const percentile = this.getPercentileValue(stat);
+      if (percentile) {
+        return {
+          refId: target.refId,
+          target: stat,
+          datapoints: data.filter(bucket => !bucket.empty)
+            .map(bucket => [this.findPercentileInBucket(percentile, bucket), bucket.start])
+        };
+      } else {
+        return {
+          refId: target.refId,
+          target: stat,
+          datapoints: data.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
+        };
+      }
+    });
+  }
+
+  statsQueryUnmerged(target, postData) {
+    const url = `${this.url}/metrics/stats/query`;
+    delete postData.order;
+    postData.buckets = STATS_BUCKETS;
+    postData.types = [target.type];
+    if (postData.metrics) {
+      const metricsPerType = {};
+      metricsPerType[target.type] = postData.metrics;
+      postData.metrics = metricsPerType;
+    }
+    const percentiles = this.getPercentilesToQuery(target.stats);
+    if (percentiles.length > 0) {
+      postData.percentiles = percentiles.join(',');
+    }
+    return this.backendSrv.datasourceRequest({
+      url: url,
+      data: postData,
+      method: 'POST',
+      headers: this.headers
+    }).then(response => this.processUnmergedStatsResponse(target, response.status == 200 ? response.data : []));
+  }
+
+  processUnmergedStatsResponse(target, data) {
+    // Response example:
+    // {"gauge": {"my_metric": [
+    //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}
+    // ]}}
+    const series = [];
+    const allMetrics = data[target.type];
+    for (let metricId in allMetrics) {
+      if (allMetrics.hasOwnProperty(metricId)) {
+        const buckets = allMetrics[metricId];
+        target.stats.forEach(stat => {
+          const percentile = this.getPercentileValue(stat);
+          if (percentile) {
+            series.push({
+              refId: target.refId,
+              target: `${metricId} [${stat}]`,
+              datapoints: buckets.filter(bucket => !bucket.empty)
+                .map(bucket => [this.findPercentileInBucket(percentile, bucket), bucket.start])
+            });
+          } else {
+            series.push({
+              refId: target.refId,
+              target: `${metricId} [${stat}]`,
+              datapoints: buckets.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
+            });
+          }
+        });
+      }
+    }
+    return series;
+  }
+
+  getPercentilesToQuery(stats) {
+    return stats.map(this.getPercentileValue).filter(perc => perc != null);
+  }
+
+  getPercentileValue(percentileName) {
+    const idx = percentileName.indexOf(' %ile');
+    return (idx >= 0) ? percentileName.substring(0, idx) : null;
+  }
+
+  findPercentileInBucket(percentile, bucket) {
+    if (bucket.percentiles) {
+      const percObj = bucket.percentiles.find(p => p.originalQuantile == percentile);
+      if (percObj) {
+        return percObj.value;
+      }
+    }
+    return null;
   }
 
   singleStatQuery(target, postData) {
