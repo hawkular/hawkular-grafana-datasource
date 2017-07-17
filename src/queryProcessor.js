@@ -1,5 +1,7 @@
 import {modelToString as tagsModelToString} from './tagsKVPairsController';
 
+const STATS_BUCKETS = 60;
+
 export class QueryProcessor {
 
   constructor(q, backendSrv, variablesHelper, capabilities, url, headers, typeResources) {
@@ -154,9 +156,9 @@ export class QueryProcessor {
     if (target.seriesAggFn === 'none') {
       return this.statsQueryUnmerged(target, postData);
     }
-    const url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
+    const url = `${this.url}/${this.typeResources[target.type]}/stats/query`;
     delete postData.order;
-    postData.buckets = 60;
+    postData.buckets = STATS_BUCKETS;
     postData.stacked = target.seriesAggFn === 'sum';
     const percentiles = this.getPercentilesToQuery(target.stats);
     if (percentiles.length > 0) {
@@ -167,10 +169,11 @@ export class QueryProcessor {
       data: postData,
       method: 'POST',
       headers: this.headers
-    }).then(response => this.processStatsResponse(target, percentiles, response.status == 200 ? response.data : []));
+    }).then(response => this.processStatsResponse(target, response.status == 200 ? response.data : []));
   }
 
-  processStatsResponse(target, percentiles, data) {
+  processStatsResponse(target, data) {
+    // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}]
     return target.stats.map(stat => {
       const percentile = this.getPercentileValue(stat);
       if (percentile) {
@@ -191,9 +194,9 @@ export class QueryProcessor {
   }
 
   statsQueryUnmerged(target, postData) {
-    const url = this.url + '/metrics/stats/query';
+    const url = `${this.url}/metrics/stats/query`;
     delete postData.order;
-    postData.buckets = 60;
+    postData.buckets = STATS_BUCKETS;
     postData.types = [target.type];
     if (postData.metrics) {
       const metricsPerType = {};
@@ -209,10 +212,14 @@ export class QueryProcessor {
       data: postData,
       method: 'POST',
       headers: this.headers
-    }).then(response => this.processUnmergedStatsResponse(target, percentiles, response.status == 200 ? response.data : []));
+    }).then(response => this.processUnmergedStatsResponse(target, response.status == 200 ? response.data : []));
   }
 
-  processUnmergedStatsResponse(target, percentiles, data) {
+  processUnmergedStatsResponse(target, data) {
+    // Response example:
+    // {"gauge": {"my_metric": [
+    //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}
+    // ]}}
     const series = [];
     const allMetrics = data[target.type];
     for (let metricId in allMetrics) {
@@ -246,10 +253,7 @@ export class QueryProcessor {
 
   getPercentileValue(percentileName) {
     const idx = percentileName.indexOf(' %ile');
-    if (idx >= 0) {
-      return percentileName.substring(0, idx);
-    }
-    return null;
+    return (idx >= 0) ? percentileName.substring(0, idx) : null;
   }
 
   findPercentileInBucket(percentile, bucket) {

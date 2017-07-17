@@ -61,7 +61,7 @@ export class HawkularDatasource {
     target.type = target.type || 'gauge';
     target.rate = target.rate === true;
     target.tags = target.tags || [];
-    target.tagsQL = target.tagsQL || "";
+    target.tagsQL = target.tagsQL || '';
     target.seriesAggFn = target.seriesAggFn || 'none';
     if (target.raw === undefined) {
       // Compatibility note: previously default was timeAggFn=avg and seriesAggFn=none
