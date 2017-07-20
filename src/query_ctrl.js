@@ -13,6 +13,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.uiSegmentSrv = uiSegmentSrv;
     this.$q = $q;
 
+    this.target = this.datasource.sanitizeTarget(this.target);
     this.caps = new Capabilities("");
     this.datasource.getCapabilities().then(caps => {
       this.caps = caps;
@@ -40,16 +41,17 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
       {value: 'max', text: 'Max'},
       {value: 'live', text: 'Live'}
     ];
+    this.availableStats = ['avg', 'min', 'max', 'median', 'sum', '75 %ile', '90 %ile', '95 %ile', '98 %ile', '99 %ile', '99.9 %ile']
+      .map(val => ({value: val, text: val}));
+    this.statsSegments = this.initStatsSegments();
+    this.removeStatsSegment = this.uiSegmentSrv.newSegment({fake: true, value: '-- Remove --'});
 
     this.target.type = this.target.type || this.metricTypes[0].value;
-    // backward compatibility: check target.target
-    this.target.id = this.target.id || this.target.target || '-- none --';
-    delete this.target.target;
-    this.target.rate = this.target.rate === true;
-    this.target.tags = this.target.tags || [];
-    this.target.tagsQL = this.target.tagsQL || "";
-    this.target.seriesAggFn = this.target.seriesAggFn || this.seriesAggFns[0].value;
-    this.target.timeAggFn = this.target.timeAggFn || this.timeAggFns[0].value;
+    this.target.id = this.target.id || '-- none --';
+    if (this.panel.type === 'singlestat') {
+      this.target.raw = false;
+      this.target.timeAggFn = this.target.timeAggFn || this.timeAggFns[0].value;
+    }
   }
 
   getTagsSegments(segment, $index) {
@@ -59,6 +61,41 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
   tagsSegmentChanged(segment, $index) {
     this.tagsController.tagsSegmentChanged(this.tagsSegments, segment, $index);
     this.onChangeInternal();
+  }
+
+  initStatsSegments() {
+    let segments = this.target.stats.map((stat) => this.uiSegmentSrv.newKey(stat));
+    segments.push(this.uiSegmentSrv.newPlusButton());
+    return segments;
+  }
+
+  getStatsSegments(segment, $index) {
+    if (segment.type === 'plus-button') {
+      return this.getAvailableStats();
+    }
+    return this.getAvailableStats()
+        .then(keys => [angular.copy(this.removeStatsSegment), ...keys]);
+  }
+
+  statsSegmentChanged(segment, index) {
+    if (segment.value === this.removeStatsSegment.value) {
+      this.statsSegments.splice(index, 1);
+    } else if (segment.type === 'plus-button') {
+      this.statsSegments.splice(index, 1);
+      this.statsSegments.splice(index, 0,
+        this.uiSegmentSrv.newKey(segment.value),
+        this.uiSegmentSrv.newPlusButton());
+    } else {
+      this.statsSegments[index] = segment;
+    }
+    this.target.stats = this.statsSegments.filter((s) => !s.fake).map((s) => s.value);
+    this.onChangeInternal();
+  }
+
+  getAvailableStats() {
+    // Filter out already selected stats
+    return this.$q.when(this.availableStats.filter((stat) => this.target.stats.indexOf(stat.value) < 0))
+      .then(this.uiSegmentSrv.transformToSegments(false));
   }
 
   getMetricOptions() {
