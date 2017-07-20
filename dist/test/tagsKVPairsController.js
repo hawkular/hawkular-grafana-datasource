@@ -117,14 +117,14 @@ function modelToSegments(tags, segmentFactory) {
   }, []);
 }
 
-function modelToString(tags, variables, options) {
+function modelToString(tags, variablesHelper, options) {
   return tags.map(function (tag) {
     var value = void 0;
     if (tag.value === ' *') {
       // '*' character get a special treatment in grafana so we had to use ' *' instead
       value = '*';
-    } else if (variables) {
-      value = variables.resolve(tag.value, options).join('|');
+    } else if (variablesHelper) {
+      value = variablesHelper.resolve(tag.value, options).join('|');
     } else {
       value = tag.value;
     }

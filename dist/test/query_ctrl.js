@@ -17,6 +17,8 @@ var _tagsKVPairsController = require('./tagsKVPairsController');
 
 var _tagsQLController = require('./tagsQLController');
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -35,6 +37,7 @@ var HawkularDatasourceQueryCtrl = exports.HawkularDatasourceQueryCtrl = function
     _this.uiSegmentSrv = uiSegmentSrv;
     _this.$q = $q;
 
+    _this.target = _this.datasource.sanitizeTarget(_this.target);
     _this.caps = new _capabilities.Capabilities("");
     _this.datasource.getCapabilities().then(function (caps) {
       _this.caps = caps;
@@ -53,16 +56,18 @@ var HawkularDatasourceQueryCtrl = exports.HawkularDatasourceQueryCtrl = function
     _this.metricTypes = [{ value: 'gauge', text: 'Gauge' }, { value: 'counter', text: 'Counter' }, { value: 'availability', text: 'Availability' }];
     _this.seriesAggFns = [{ value: 'none', text: 'None' }, { value: 'sum', text: 'Sum' }, { value: 'avg', text: 'Average' }];
     _this.timeAggFns = [{ value: 'avg', text: 'Average' }, { value: 'min', text: 'Min' }, { value: 'max', text: 'Max' }, { value: 'live', text: 'Live' }];
+    _this.availableStats = ['avg', 'min', 'max', 'median', 'sum', '75 %ile', '90 %ile', '95 %ile', '98 %ile', '99 %ile', '99.9 %ile'].map(function (val) {
+      return { value: val, text: val };
+    });
+    _this.statsSegments = _this.initStatsSegments();
+    _this.removeStatsSegment = _this.uiSegmentSrv.newSegment({ fake: true, value: '-- Remove --' });
 
     _this.target.type = _this.target.type || _this.metricTypes[0].value;
-    // backward compatibility: check target.target
-    _this.target.id = _this.target.id || _this.target.target || '-- none --';
-    delete _this.target.target;
-    _this.target.rate = _this.target.rate === true;
-    _this.target.tags = _this.target.tags || [];
-    _this.target.tagsQL = _this.target.tagsQL || "";
-    _this.target.seriesAggFn = _this.target.seriesAggFn || _this.seriesAggFns[0].value;
-    _this.target.timeAggFn = _this.target.timeAggFn || _this.timeAggFns[0].value;
+    _this.target.id = _this.target.id || '-- none --';
+    if (_this.panel.type === 'singlestat') {
+      _this.target.raw = false;
+      _this.target.timeAggFn = _this.target.timeAggFn || _this.timeAggFns[0].value;
+    }
     return _this;
   }
 
@@ -76,6 +81,57 @@ var HawkularDatasourceQueryCtrl = exports.HawkularDatasourceQueryCtrl = function
     value: function tagsSegmentChanged(segment, $index) {
       this.tagsController.tagsSegmentChanged(this.tagsSegments, segment, $index);
       this.onChangeInternal();
+    }
+  }, {
+    key: 'initStatsSegments',
+    value: function initStatsSegments() {
+      var _this2 = this;
+
+      var segments = this.target.stats.map(function (stat) {
+        return _this2.uiSegmentSrv.newKey(stat);
+      });
+      segments.push(this.uiSegmentSrv.newPlusButton());
+      return segments;
+    }
+  }, {
+    key: 'getStatsSegments',
+    value: function getStatsSegments(segment, $index) {
+      var _this3 = this;
+
+      if (segment.type === 'plus-button') {
+        return this.getAvailableStats();
+      }
+      return this.getAvailableStats().then(function (keys) {
+        return [angular.copy(_this3.removeStatsSegment)].concat(_toConsumableArray(keys));
+      });
+    }
+  }, {
+    key: 'statsSegmentChanged',
+    value: function statsSegmentChanged(segment, index) {
+      if (segment.value === this.removeStatsSegment.value) {
+        this.statsSegments.splice(index, 1);
+      } else if (segment.type === 'plus-button') {
+        this.statsSegments.splice(index, 1);
+        this.statsSegments.splice(index, 0, this.uiSegmentSrv.newKey(segment.value), this.uiSegmentSrv.newPlusButton());
+      } else {
+        this.statsSegments[index] = segment;
+      }
+      this.target.stats = this.statsSegments.filter(function (s) {
+        return !s.fake;
+      }).map(function (s) {
+        return s.value;
+      });
+      this.onChangeInternal();
+    }
+  }, {
+    key: 'getAvailableStats',
+    value: function getAvailableStats() {
+      var _this4 = this;
+
+      // Filter out already selected stats
+      return this.$q.when(this.availableStats.filter(function (stat) {
+        return _this4.target.stats.indexOf(stat.value) < 0;
+      })).then(this.uiSegmentSrv.transformToSegments(false));
     }
   }, {
     key: 'getMetricOptions',

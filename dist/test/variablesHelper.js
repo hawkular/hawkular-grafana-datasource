@@ -3,58 +3,68 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.VariablesHelper = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _lodash = require("lodash");
+
+var _lodash2 = _interopRequireDefault(_lodash);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var Variables = exports.Variables = function () {
-  function Variables(templateSrv) {
-    _classCallCheck(this, Variables);
+var VariablesHelper = exports.VariablesHelper = function () {
+  function VariablesHelper(templateSrv) {
+    _classCallCheck(this, VariablesHelper);
 
     this.templateSrv = templateSrv;
   }
 
-  _createClass(Variables, [{
+  _createClass(VariablesHelper, [{
     key: "resolve",
     value: function resolve(target, options) {
       var _this = this;
 
-      var variables = options.scopedVars || this.templateSrv.variables;
+      var variableNames = (this.templateSrv.variables || []).map(function (v) {
+        return '$' + v.name;
+      });
       // For each variable in target, and each values of a given variable, build a resolved target string
-      var variableNames = target.match(/\$\w+/g);
       var resolved = [target];
       if (variableNames) {
         variableNames.forEach(function (name) {
-          var values = _this.getVarValues(name, variables);
-          var newResolved = [];
-          values.forEach(function (val) {
-            resolved.forEach(function (target) {
-              newResolved.push(target.replace(name, val));
+          if (target.indexOf(name) >= 0) {
+            var values = _this.getVarValues(name, options.scopedVars);
+            var newResolved = [];
+            var regex = new RegExp("\\" + name, "g");
+            values.forEach(function (val) {
+              resolved.forEach(function (newTarget) {
+                newResolved.push(newTarget.replace(regex, val));
+              });
             });
-          });
-          resolved = newResolved;
+            resolved = newResolved;
+          }
         });
       }
       return resolved;
     }
   }, {
-    key: "resolveToString",
-    value: function resolveToString(target, options) {
-      var _this2 = this;
-
-      var variables = options.scopedVars || this.templateSrv.variables;
-      return target.replace(/\$\w+/g, function (name) {
-        var values = _this2.getVarValues(name, variables);
-        return values.map(function (v) {
-          return "'" + v + "'";
-        }).join(',');
+    key: "resolveForQL",
+    value: function resolveForQL(target, options) {
+      return this.templateSrv.replace(target, options.scopedVars, function (values) {
+        if (_lodash2.default.isArray(values)) {
+          return values.map(function (v) {
+            return "'" + v + "'";
+          }).join(',');
+        }
+        return "'" + values + "'";
       });
     }
   }, {
     key: "getVarValues",
-    value: function getVarValues(name, variables) {
-      var values = this.templateSrv.replace(name, variables);
+    value: function getVarValues(name, scopedVars) {
+      var values = this.templateSrv.replace(name, scopedVars);
       // result might be in like "{id1,id2,id3}" (as string)
       if (values.charAt(0) === '{') {
         return values.substring(1, values.length - 1).split(',');
@@ -68,6 +78,6 @@ var Variables = exports.Variables = function () {
     }
   }]);
 
-  return Variables;
+  return VariablesHelper;
 }();
-//# sourceMappingURL=variables.js.map
+//# sourceMappingURL=variablesHelper.js.map

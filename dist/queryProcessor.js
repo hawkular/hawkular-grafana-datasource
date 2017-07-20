@@ -3,7 +3,7 @@
 System.register(['./tagsKVPairsController'], function (_export, _context) {
   "use strict";
 
-  var tagsModelToString, _createClass, QueryProcessor;
+  var tagsModelToString, _createClass, STATS_BUCKETS, QueryProcessor;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -34,13 +34,15 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
         };
       }();
 
+      STATS_BUCKETS = 60;
+
       _export('QueryProcessor', QueryProcessor = function () {
-        function QueryProcessor(q, backendSrv, variables, capabilities, url, headers, typeResources) {
+        function QueryProcessor(q, backendSrv, variablesHelper, capabilities, url, headers, typeResources) {
           _classCallCheck(this, QueryProcessor);
 
           this.q = q;
           this.backendSrv = backendSrv;
-          this.variables = variables;
+          this.variablesHelper = variablesHelper;
           this.capabilities = capabilities;
           this.url = url;
           this.headers = headers;
@@ -66,18 +68,22 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
               };
               var multipleMetrics = true;
               if (target.id) {
-                var metricIds = _this.variables.resolve(target.id, options);
+                var metricIds = _this.variablesHelper.resolve(target.id, options);
                 if (caps.QUERY_POST_ENDPOINTS) {
-                  if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+                  if (target.raw) {
                     postData.ids = metricIds;
                     return _this.rawQuery(target, postData);
                   } else if (target.timeAggFn == 'live') {
                     // Need to change postData
                     return _this.singleStatLiveQuery(target, { ids: metricIds, limit: 1 });
-                  } else {
-                    // Need to perform multiple series aggregation
+                  } else if (target.timeAggFn) {
+                    // Query single stat
                     postData.metrics = metricIds;
                     return _this.singleStatQuery(target, postData);
+                  } else {
+                    // Query stats for chart
+                    postData.metrics = metricIds;
+                    return _this.statsQuery(target, postData);
                   }
                 } else {
                   return _this.rawQueryLegacy(target, options.range, metricIds);
@@ -85,25 +91,28 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
               } else {
                 if (caps.TAGS_QUERY_LANGUAGE) {
                   if (target.tagsQL !== undefined && target.tagsQL.length > 0) {
-                    postData.tags = _this.variables.resolveToString(target.tagsQL, options);
+                    postData.tags = _this.variablesHelper.resolveForQL(target.tagsQL, options);
                   } else {
                     return _this.q.when([]);
                   }
                 } else {
                   if (target.tags !== undefined && target.tags.length > 0) {
-                    postData.tags = tagsModelToString(target.tags, _this.variables, options);
+                    postData.tags = tagsModelToString(target.tags, _this.variablesHelper, options);
                   } else {
                     return _this.q.when([]);
                   }
                 }
-                if (!target.seriesAggFn || target.seriesAggFn === 'none') {
+                if (target.raw) {
                   return _this.rawQuery(target, postData);
                 } else if (target.timeAggFn == 'live') {
                   // Need to change postData
                   return _this.singleStatLiveQuery(target, { tags: postData.tags, limit: 1 });
-                } else {
-                  // Need to perform multiple series aggregation
+                } else if (target.timeAggFn) {
+                  // Query single stat
                   return _this.singleStatQuery(target, postData);
+                } else {
+                  // Query stats for chart
+                  return _this.statsQuery(target, postData);
                 }
               }
             });
@@ -196,9 +205,165 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             };
           }
         }, {
+          key: 'statsQuery',
+          value: function statsQuery(target, postData) {
+            var _this5 = this;
+
+            if (target.seriesAggFn === 'none') {
+              return this.statsQueryUnmerged(target, postData);
+            }
+            var url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
+            delete postData.order;
+            postData.buckets = STATS_BUCKETS;
+            postData.stacked = target.seriesAggFn === 'sum';
+            var percentiles = this.getPercentilesToQuery(target.stats);
+            if (percentiles.length > 0) {
+              postData.percentiles = percentiles.join(',');
+            }
+            return this.backendSrv.datasourceRequest({
+              url: url,
+              data: postData,
+              method: 'POST',
+              headers: this.headers
+            }).then(function (response) {
+              return _this5.processStatsResponse(target, response.status == 200 ? response.data : []);
+            });
+          }
+        }, {
+          key: 'processStatsResponse',
+          value: function processStatsResponse(target, data) {
+            var _this6 = this;
+
+            // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}]
+            return target.stats.map(function (stat) {
+              var percentile = _this6.getPercentileValue(stat);
+              if (percentile) {
+                return {
+                  refId: target.refId,
+                  target: stat,
+                  datapoints: data.filter(function (bucket) {
+                    return !bucket.empty;
+                  }).map(function (bucket) {
+                    return [_this6.findPercentileInBucket(percentile, bucket), bucket.start];
+                  })
+                };
+              } else {
+                return {
+                  refId: target.refId,
+                  target: stat,
+                  datapoints: data.filter(function (bucket) {
+                    return !bucket.empty;
+                  }).map(function (bucket) {
+                    return [bucket[stat], bucket.start];
+                  })
+                };
+              }
+            });
+          }
+        }, {
+          key: 'statsQueryUnmerged',
+          value: function statsQueryUnmerged(target, postData) {
+            var _this7 = this;
+
+            var url = this.url + '/metrics/stats/query';
+            delete postData.order;
+            postData.buckets = STATS_BUCKETS;
+            postData.types = [target.type];
+            if (postData.metrics) {
+              var metricsPerType = {};
+              metricsPerType[target.type] = postData.metrics;
+              postData.metrics = metricsPerType;
+            }
+            var percentiles = this.getPercentilesToQuery(target.stats);
+            if (percentiles.length > 0) {
+              postData.percentiles = percentiles.join(',');
+            }
+            return this.backendSrv.datasourceRequest({
+              url: url,
+              data: postData,
+              method: 'POST',
+              headers: this.headers
+            }).then(function (response) {
+              return _this7.processUnmergedStatsResponse(target, response.status == 200 ? response.data : []);
+            });
+          }
+        }, {
+          key: 'processUnmergedStatsResponse',
+          value: function processUnmergedStatsResponse(target, data) {
+            var _this8 = this;
+
+            // Response example:
+            // {"gauge": {"my_metric": [
+            //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}
+            // ]}}
+            var series = [];
+            var allMetrics = data[target.type];
+
+            var _loop = function _loop(metricId) {
+              if (allMetrics.hasOwnProperty(metricId)) {
+                var buckets = allMetrics[metricId];
+                target.stats.forEach(function (stat) {
+                  var percentile = _this8.getPercentileValue(stat);
+                  if (percentile) {
+                    series.push({
+                      refId: target.refId,
+                      target: metricId + ' [' + stat + ']',
+                      datapoints: buckets.filter(function (bucket) {
+                        return !bucket.empty;
+                      }).map(function (bucket) {
+                        return [_this8.findPercentileInBucket(percentile, bucket), bucket.start];
+                      })
+                    });
+                  } else {
+                    series.push({
+                      refId: target.refId,
+                      target: metricId + ' [' + stat + ']',
+                      datapoints: buckets.filter(function (bucket) {
+                        return !bucket.empty;
+                      }).map(function (bucket) {
+                        return [bucket[stat], bucket.start];
+                      })
+                    });
+                  }
+                });
+              }
+            };
+
+            for (var metricId in allMetrics) {
+              _loop(metricId);
+            }
+            return series;
+          }
+        }, {
+          key: 'getPercentilesToQuery',
+          value: function getPercentilesToQuery(stats) {
+            return stats.map(this.getPercentileValue).filter(function (perc) {
+              return perc != null;
+            });
+          }
+        }, {
+          key: 'getPercentileValue',
+          value: function getPercentileValue(percentileName) {
+            var idx = percentileName.indexOf(' %ile');
+            return idx >= 0 ? percentileName.substring(0, idx) : null;
+          }
+        }, {
+          key: 'findPercentileInBucket',
+          value: function findPercentileInBucket(percentile, bucket) {
+            if (bucket.percentiles) {
+              var percObj = bucket.percentiles.find(function (p) {
+                return p.originalQuantile == percentile;
+              });
+              if (percObj) {
+                return percObj.value;
+              }
+            }
+            return null;
+          }
+        }, {
           key: 'singleStatQuery',
           value: function singleStatQuery(target, postData) {
-            var _this5 = this;
+            var _this9 = this;
 
             // Query for singlestat => we just ask for a single bucket
             // But because of that we need to override Grafana behaviour, and manage ourselves the min/max/avg/etc. selection
@@ -226,7 +391,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
               method: 'POST',
               headers: this.headers
             }).then(function (response) {
-              return _this5.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
+              return _this9.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
             });
           }
         }, {
@@ -243,7 +408,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
         }, {
           key: 'singleStatLiveQuery',
           value: function singleStatLiveQuery(target, postData) {
-            var _this6 = this;
+            var _this10 = this;
 
             var uri = [this.typeResources[target.type], // gauges, counters or availability
             target.rate ? 'rate' : 'raw', // raw or rate
@@ -257,7 +422,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
               method: 'POST',
               headers: this.headers
             }).then(function (response) {
-              return _this6.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
+              return _this10.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
             });
           }
         }, {

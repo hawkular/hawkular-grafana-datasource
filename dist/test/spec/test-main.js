@@ -23,8 +23,6 @@ _prunk2.default.mock('app/plugins/sdk', {
 // Required for loading angularjs
 global.document = (0, _jsdom.jsdom)('<html><head><script></script></head><body></body></html>');
 global.window = global.document.parentWindow;
-global.navigator = window.navigator = {};
-global.Node = window.Node;
 
 // Setup Chai
 _chai2.default.should();
