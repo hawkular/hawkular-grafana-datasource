@@ -173,7 +173,7 @@ export class QueryProcessor {
   }
 
   processStatsResponse(target, data) {
-    // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}]
+    // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}]
     return target.stats.map(stat => {
       const percentile = this.getPercentileValue(stat);
       if (percentile) {
@@ -181,7 +181,7 @@ export class QueryProcessor {
           refId: target.refId,
           target: stat,
           datapoints: data.filter(bucket => !bucket.empty)
-            .map(bucket => [this.findPercentileInBucket(percentile, bucket), bucket.start])
+            .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
         };
       } else {
         return {
@@ -218,7 +218,7 @@ export class QueryProcessor {
   processUnmergedStatsResponse(target, data) {
     // Response example:
     // {"gauge": {"my_metric": [
-    //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}
+    //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}
     // ]}}
     const series = [];
     const allMetrics = data[target.type];
@@ -232,7 +232,7 @@ export class QueryProcessor {
               refId: target.refId,
               target: `${metricId} [${stat}]`,
               datapoints: buckets.filter(bucket => !bucket.empty)
-                .map(bucket => [this.findPercentileInBucket(percentile, bucket), bucket.start])
+                .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
             });
           } else {
             series.push({
@@ -256,9 +256,9 @@ export class QueryProcessor {
     return (idx >= 0) ? percentileName.substring(0, idx) : null;
   }
 
-  findPercentileInBucket(percentile, bucket) {
+  findQuantileInBucket(quantile, bucket) {
     if (bucket.percentiles) {
-      const percObj = bucket.percentiles.find(p => p.originalQuantile == percentile);
+      const percObj = bucket.percentiles.find(p => p.quantile.toString().indexOf(quantile) >= 0);
       if (percObj) {
         return percObj.value;
       }
