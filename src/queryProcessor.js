@@ -4,13 +4,13 @@ const STATS_BUCKETS = 60;
 
 export class QueryProcessor {
 
-  constructor(q, backendSrv, variablesHelper, capabilities, url, headers, typeResources) {
+  constructor(q, backendSrv, variablesHelper, capabilities, url, getHeaders, typeResources) {
     this.q = q;
     this.backendSrv = backendSrv;
     this.variablesHelper = variablesHelper;
     this.capabilities = capabilities;
     this.url = url;
-    this.headers = headers;
+    this.getHeaders = getHeaders;
     this.typeResources = typeResources;
     this.numericMapping = point => [point.value, point.timestamp];
     this.availMapping = point => [point.value == 'up' ? 1 : 0, point.timestamp];
@@ -87,7 +87,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processRawResponse(target, response.status == 200 ? response.data : []));
   }
 
@@ -106,7 +106,7 @@ export class QueryProcessor {
           end: range.to.valueOf()
         },
         method: 'GET',
-        headers: this.headers
+        headers: this.getHeaders(target.tenant)
       }).then(response => this.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []));
     }));
   }
@@ -168,7 +168,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processStatsResponse(target, response.status == 200 ? response.data : []));
   }
 
@@ -211,7 +211,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processUnmergedStatsResponse(target, response.status == 200 ? response.data : []));
   }
 
@@ -285,7 +285,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []));
   }
 
@@ -312,7 +312,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []));
   }
 

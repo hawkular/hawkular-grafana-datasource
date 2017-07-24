@@ -10,25 +10,40 @@ export class HawkularDatasource {
     this.type = instanceSettings.type;
     this.url = instanceSettings.url;
     this.name = instanceSettings.name;
+    this.tenant = instanceSettings.jsonData.tenant;
+    this.isTenantPerQuery = instanceSettings.jsonData.isTenantPerQuery;
+    this.authorization = null;
+    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
+      this.authorization = instanceSettings.basicAuth;
+    } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
+      this.authorization = 'Bearer ' + instanceSettings.jsonData.token;
+    }
     this.q = $q;
     this.backendSrv = backendSrv;
-    this.headers = {
-      'Content-Type': 'application/json',
-      'Hawkular-Tenant': instanceSettings.jsonData.tenant
-    };
-    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
-      this.headers['Authorization'] = instanceSettings.basicAuth;
-    } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
-      this.headers['Authorization'] = 'Bearer ' + instanceSettings.jsonData.token;
-    }
     this.typeResources = {
-      "gauge": "gauges",
-      "counter": "counters",
-      "availability": "availability"
+      'gauge': 'gauges',
+      'counter': 'counters',
+      'availability': 'availability'
     };
     this.variablesHelper = new VariablesHelper(templateSrv);
     this.capabilitiesPromise = this.queryVersion().then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
+    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.url,
+            this.getHeaders.bind(this), this.typeResources);
+  }
+
+  getHeaders(tenant) {
+    const headers = {
+      'Content-Type': 'application/json'
+    }
+    if (tenant && this.isTenantPerQuery) {
+      headers['Hawkular-Tenant'] = tenant;
+    } else {
+      headers['Hawkular-Tenant'] = this.tenant;
+    }
+    if (this.authorization) {
+      headers['Authorization'] = this.authorization;
+    }
+    return headers;
   }
 
   query(options) {
@@ -74,15 +89,19 @@ export class HawkularDatasource {
   }
 
   testDatasource() {
+    // If tenants is unknown at this point (when having per-query tenants)
+    // We do a more basic check to status endpoint
+    // Else, it's full connectivity with tenant check
+    const endpoint = this.isTenantPerQuery ? '/status' : '/metrics';
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics',
+      url: this.url + endpoint,
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders()
     }).then(response => {
       if (response.status === 200 || response.status === 204) {
-        return { status: "success", message: "Data source is working", title: "Success" };
+        return { status: 'success', message: 'Data source is working', title: 'Success' };
       } else {
-        return { status: "error", message: "Connection failed (" + response.status + ")", title: "Error" };
+        return { status: 'error', message: 'Connection failed (' + response.status + ')', title: 'Error' };
       }
     });
   }
@@ -90,7 +109,7 @@ export class HawkularDatasource {
   annotationQuery(options) {
     const metricIds = this.variablesHelper.resolve(options.annotation.query, options);
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/strings/raw/query',
+      url: `${this.url}/${options.annotation.type}/raw/query`,
       data: {
         start: options.range.from.valueOf(),
         end: options.range.to.valueOf(),
@@ -98,7 +117,7 @@ export class HawkularDatasource {
         ids: metricIds
       },
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(options.annotation.tenant)
     }).then(response => response.status == 200 ? response.data : [])
     .then(metrics => {
       let allAnnotations = [];
@@ -141,7 +160,7 @@ export class HawkularDatasource {
     return this.backendSrv.datasourceRequest({
       url: url,
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => response.status == 200 ? response.data : [])
     .then(result => {
       return result.map(m => m.id)
@@ -152,25 +171,25 @@ export class HawkularDatasource {
     });
   }
 
-  suggestTags(type, key) {
+  suggestTags(target, key) {
     if (!key) {
       return this.q.when([]);
     }
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
+      url: this.url + '/' + this.typeResources[target.type] + '/tags/' + key + ':*',
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(result => result.data.hasOwnProperty(key) ? result.data[key] : [])
     .then(tags => tags.map(tag => {
       return {text: tag, value: tag};
     }));
   }
 
-  suggestTagKeys(type) {
+  suggestTagKeys(target) {
     return this.backendSrv.datasourceRequest({
       url: this.url + '/metrics/tags',
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => response.status == 200 ? response.data : [])
     .then(result => result.map(key => ({text: key, value: key})));
   }
@@ -190,7 +209,7 @@ export class HawkularDatasource {
     return this.runWithResolvedVariables(params, p => this.backendSrv.datasourceRequest({
       url: this.url + '/metrics' + p,
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders()
     }).then(result => {
       return _.map(result.data, metric => {
         return {text: metric.id, value: metric.id};
@@ -202,7 +221,7 @@ export class HawkularDatasource {
     return this.runWithResolvedVariables(pattern, p => this.backendSrv.datasourceRequest({
       url: this.url + '/metrics/tags/' + p,
       method: 'GET',
-      headers: this.headers
+      headers: this.getHeaders()
     }).then(result => {
       let flatTags = [];
       if (result.data) {

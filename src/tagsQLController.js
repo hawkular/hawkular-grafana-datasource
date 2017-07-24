@@ -53,7 +53,7 @@ export class TagsQLController {
       let i = this.getContainingEnum(segments, $index);
       if (i > 0) {
         const key = segments[i-1].value;
-        return this.datasource.suggestTags(this.targetSupplier().type, key)
+        return this.datasource.suggestTags(this.targetSupplier(), key)
           .then(this.uiSegmentSrv.transformToSegments(false));
       } else {
         return this.getTagKeys();
@@ -68,7 +68,7 @@ export class TagsQLController {
         i--;
       }
       const key = segments[i].value;
-      let promise = this.datasource.suggestTags(this.targetSupplier().type, key)
+      let promise = this.datasource.suggestTags(this.targetSupplier(), key)
         .then(this.uiSegmentSrv.transformToSegments(false));
       if (segments[$index-1].type === 'value') {
         // We're in an enumeration
@@ -99,7 +99,7 @@ export class TagsQLController {
   }
 
   getTagKeys() {
-    return this.datasource.suggestTagKeys()
+    return this.datasource.suggestTagKeys(this.targetSupplier())
       .then(this.uiSegmentSrv.transformToSegments(false));
   }
 

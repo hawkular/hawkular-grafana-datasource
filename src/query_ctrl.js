@@ -6,7 +6,7 @@ import {TagsQLController} from './tagsQLController';
 
 export class HawkularDatasourceQueryCtrl extends QueryCtrl {
 
-  constructor($scope, $injector, uiSegmentSrv, $q)  {
+  constructor($scope, $injector, uiSegmentSrv, $q) {
     super($scope, $injector);
 
     this.scope = $scope;

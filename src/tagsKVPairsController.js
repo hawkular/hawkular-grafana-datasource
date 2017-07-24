@@ -27,7 +27,7 @@ export class TagsKVPairsController {
           .then(keys => [angular.copy(this.removeTagsSegment), ...keys]);
     } else if (segment.type === 'value')  {
       let key = segments[$index-2].value;
-      return this.datasource.suggestTags(this.targetSupplier().type, key)
+      return this.datasource.suggestTags(this.targetSupplier(), key)
         .then(tags => [{text: ' *', value: ' *'}, ...tags])
         .then(this.uiSegmentSrv.transformToSegments(false));
     }
@@ -35,7 +35,7 @@ export class TagsKVPairsController {
 
   getTagKeys() {
     if (this.fetchAllTagsCapability) {
-      return this.datasource.suggestTagKeys()
+      return this.datasource.suggestTagKeys(this.targetSupplier())
         .then(this.uiSegmentSrv.transformToSegments(false));
     } else {
       return this.$q.when([]);

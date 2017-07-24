@@ -471,7 +471,8 @@ describe('HawkularDatasource', () => {
       },
       annotation: {
         query: "my.timeline",
-        name: "Timeline"
+        name: "Timeline",
+        type: "strings"
       }
     };
 
@@ -498,13 +499,13 @@ describe('HawkularDatasource', () => {
 
     ctx.ds.annotationQuery(options).then(result => {
       expect(result).to.have.length(2);
-      expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline", type: "strings" });
       expect(result[0].time).to.equal(13);
       expect(result[0].title).to.equal("Timeline");
       expect(result[0].tags).to.be.undefined;
       expect(result[0].text).to.equal("start");
 
-      expect(result[1].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[1].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline", type: "strings" });
       expect(result[1].time).to.equal(19);
       expect(result[1].title).to.equal("Timeline");
       expect(result[1].tags).to.be.undefined;
@@ -521,7 +522,8 @@ describe('HawkularDatasource', () => {
       },
       annotation: {
         query: "my.timeline",
-        name: "Timeline"
+        name: "Timeline",
+        type: "strings"
       }
     };
 
@@ -556,13 +558,13 @@ describe('HawkularDatasource', () => {
 
     ctx.ds.annotationQuery(options).then(result => {
       expect(result).to.have.length(2);
-      expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[0].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline", type: "strings" });
       expect(result[0].time).to.equal(13);
       expect(result[0].title).to.equal("Timeline");
       expect(result[0].tags).to.equal("myItem start");
       expect(result[0].text).to.equal("start");
 
-      expect(result[1].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline" });
+      expect(result[1].annotation).to.deep.equal({ query: "my.timeline", name: "Timeline", type: "strings" });
       expect(result[1].time).to.equal(19);
       expect(result[1].title).to.equal("Timeline");
       expect(result[1].tags).to.equal("myItem stop");
@@ -587,7 +589,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.suggestTags('gauge', 'host').then(result => {
+    ctx.ds.suggestTags({type: 'gauge'}, 'host').then(result => {
       expect(result).to.have.length(2);
       expect(result[0]).to.deep.equal({ text: 'cartago', value: 'cartago' });
       expect(result[1]).to.deep.equal({ text: 'rio', value: 'rio' });
@@ -607,7 +609,7 @@ describe('HawkularDatasource', () => {
         data: {}
       });
     };
-    ctx.ds.suggestTags('gauge', 'host').then(result => {
+    ctx.ds.suggestTags({type: 'gauge'}, 'host').then(result => {
       expect(result).to.have.length(0);
     }).then(v => done(), err => done(err));
   });
@@ -626,7 +628,7 @@ describe('HawkularDatasource', () => {
       });
     };
 
-    ctx.ds.suggestTagKeys().then(result => {
+    ctx.ds.suggestTagKeys({}).then(result => {
       expect(result).to.have.length(2);
       expect(result[0]).to.deep.equal({ text: 'host', value: 'host' });
       expect(result[1]).to.deep.equal({ text: 'app', value: 'app' });
@@ -641,7 +643,8 @@ describe('HawkularDatasource', () => {
       },
       annotation: {
         query: "$who.timeline",
-        name: "Timeline"
+        name: "Timeline",
+        type: "strings"
       }
     };
 
@@ -680,13 +683,13 @@ describe('HawkularDatasource', () => {
 
     ctx.ds.annotationQuery(options).then(result => {
       expect(result).to.have.length(2);
-      expect(result[0].annotation).to.deep.equal({ query: "$who.timeline", name: "Timeline" });
+      expect(result[0].annotation).to.deep.equal({ query: "$who.timeline", name: "Timeline", type: "strings" });
       expect(result[0].time).to.equal(15);
       expect(result[0].title).to.equal("Timeline");
       expect(result[0].tags).to.equal('your.timeline');
       expect(result[0].text).to.equal("start");
 
-      expect(result[1].annotation).to.deep.equal({ query: "$who.timeline", name: "Timeline" });
+      expect(result[1].annotation).to.deep.equal({ query: "$who.timeline", name: "Timeline", type: "strings" });
       expect(result[1].time).to.equal(13);
       expect(result[1].title).to.equal("Timeline");
       expect(result[1].tags).to.equal('my.timeline');

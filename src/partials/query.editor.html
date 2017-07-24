@@ -1,6 +1,8 @@
 <query-editor-row query-ctrl="ctrl" class="generic-datasource-query-row" has-text-edit-mode="true">
 	<div class="gf-form-inline">
 		<div class="gf-form">
+			<label ng-if="ctrl.datasource.isTenantPerQuery" class="gf-form-label query-keyword fix-query-keyword">Tenant</label>
+			<input ng-if="ctrl.datasource.isTenantPerQuery" type="text" class="gf-form-input" ng-model="ctrl.target.tenant" placeholder="default" required>
 			<select class="gf-form-input" ng-model="ctrl.target.type" ng-change="ctrl.onChangeInternal()">
 				<option ng-repeat="type in ctrl.metricTypes" value="{{type.value}}">{{type.text}}</option>
 			</select>
