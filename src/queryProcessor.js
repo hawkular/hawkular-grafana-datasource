@@ -173,7 +173,7 @@ export class QueryProcessor {
   }
 
   processStatsResponse(target, data) {
-    // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}]
+    // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
     return target.stats.map(stat => {
       const percentile = this.getPercentileValue(stat);
       if (percentile) {
@@ -218,7 +218,7 @@ export class QueryProcessor {
   processUnmergedStatsResponse(target, data) {
     // Response example:
     // {"gauge": {"my_metric": [
-    //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}
+    //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}
     // ]}}
     const series = [];
     const allMetrics = data[target.type];
