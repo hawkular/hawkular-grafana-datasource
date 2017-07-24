@@ -234,7 +234,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
           value: function processStatsResponse(target, data) {
             var _this6 = this;
 
-            // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}]
+            // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}]
             return target.stats.map(function (stat) {
               var percentile = _this6.getPercentileValue(stat);
               if (percentile) {
@@ -244,7 +244,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
                   datapoints: data.filter(function (bucket) {
                     return !bucket.empty;
                   }).map(function (bucket) {
-                    return [_this6.findPercentileInBucket(percentile, bucket), bucket.start];
+                    return [_this6.findQuantileInBucket(percentile, bucket), bucket.start];
                   })
                 };
               } else {
@@ -294,7 +294,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
 
             // Response example:
             // {"gauge": {"my_metric": [
-            //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{originalQuantile:'90', value: 105.0, (...)}]}
+            //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}
             // ]}}
             var series = [];
             var allMetrics = data[target.type];
@@ -311,7 +311,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
                       datapoints: buckets.filter(function (bucket) {
                         return !bucket.empty;
                       }).map(function (bucket) {
-                        return [_this8.findPercentileInBucket(percentile, bucket), bucket.start];
+                        return [_this8.findQuantileInBucket(percentile, bucket), bucket.start];
                       })
                     });
                   } else {
@@ -348,11 +348,11 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             return idx >= 0 ? percentileName.substring(0, idx) : null;
           }
         }, {
-          key: 'findPercentileInBucket',
-          value: function findPercentileInBucket(percentile, bucket) {
+          key: 'findQuantileInBucket',
+          value: function findQuantileInBucket(quantile, bucket) {
             if (bucket.percentiles) {
               var percObj = bucket.percentiles.find(function (p) {
-                return p.originalQuantile == percentile;
+                return p.quantile.toString().indexOf(quantile) >= 0;
               });
               if (percObj) {
                 return percObj.value;
