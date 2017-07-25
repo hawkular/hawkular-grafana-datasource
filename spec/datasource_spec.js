@@ -1,5 +1,5 @@
-import {Datasource} from "../module";
-import Q from "q";
+import {Datasource} from '../module';
+import Q from 'q';
 import {getSettings, expectRequest} from './test-util';
 
 describe('HawkularDatasource', () => {
@@ -48,7 +48,7 @@ describe('HawkularDatasource', () => {
       if (first) {
         first = false;
         id = 'memory';
-        expectRequest(request, 'POST', '/hawkular/metrics/gauges/raw/query');
+        expectRequest(request, 'POST', 'gauges/raw/query');
         expect(request.data).to.deep.equal({
           start: options.range.from,
           end: options.range.to,
@@ -57,7 +57,7 @@ describe('HawkularDatasource', () => {
         });
       } else {
         id = 'packets';
-        expectRequest(request, 'POST', '/hawkular/metrics/counters/rate/query');
+        expectRequest(request, 'POST', 'counters/rate/query');
         expect(request.data).to.deep.equal({
           start: options.range.from,
           end: options.range.to,
@@ -108,16 +108,16 @@ describe('HawkularDatasource', () => {
     }];
     ctx.templateSrv.replace = (target, vars) => {
       expect(target).to.equal('$app');
-      return "{app_1,app_2}";
+      return '{app_1,app_2}';
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      expect(request.url).to.have.string("/gauges/raw/query");
+      expect(request.url).to.have.string('gauges/raw/query');
       expect(request.data.ids).to.include.members(['app_1/memory', 'app_2/memory']);
       return ctx.$q.when({
         status: 200,
         data: [{
-          id: "app_1/memory",
+          id: 'app_1/memory',
           data: [{
             timestamp: 13,
             value: 15
@@ -126,7 +126,7 @@ describe('HawkularDatasource', () => {
             value: 21
           }]
         },{
-          id: "app_2/memory",
+          id: 'app_2/memory',
           data: [{
             timestamp: 13,
             value: 28
@@ -147,7 +147,6 @@ describe('HawkularDatasource', () => {
   });
 
   it('should query by tags', done => {
-
     let options = {
       range: {
         from: 15,
@@ -164,18 +163,18 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'POST', '/hawkular/metrics/gauges/raw/query');
+      expectRequest(request, 'POST', 'gauges/raw/query');
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
-        tags: "type:memory,host:myhost",
+        tags: 'type:memory,host:myhost',
         order: 'ASC'
       });
 
       return ctx.$q.when({
         status: 200,
         data: [{
-          id: "myhost.metric.memory.1",
+          id: 'myhost.metric.memory.1',
           data: [{
             timestamp: 13,
             value: 15
@@ -184,7 +183,7 @@ describe('HawkularDatasource', () => {
             value: 21
           }]
         },{
-          id: "myhost.metric.memory.2",
+          id: 'myhost.metric.memory.2',
           data: [{
             timestamp: 13,
             value: 20
@@ -205,7 +204,6 @@ describe('HawkularDatasource', () => {
   });
 
   it('should query availability', done => {
-
     let options = {
       range: {
         from: 15,
@@ -218,12 +216,11 @@ describe('HawkularDatasource', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'POST', '/hawkular/metrics/availability/raw/query');
-
+      expectRequest(request, 'POST', 'availability/raw/query');
       return ctx.$q.when({
         status: 200,
         data: [{
-          id: "myapp/health",
+          id: 'myapp/health',
           data: [{
             timestamp: 13,
             value: 'up'
@@ -242,9 +239,39 @@ describe('HawkularDatasource', () => {
     }).then(v => done(), err => done(err));
   });
 
+  it('should suggest metrics', done => {
+    ctx.backendSrv.datasourceRequest = request => {
+      expectRequest(request, 'GET', 'metrics?type=gauge&tags=host=cartago');
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          id: 'gauge_1',
+          tags: {
+            'host': 'cartago'
+          },
+          dataRetention: 7,
+          type: 'gauge'
+        },{
+          id: 'gauge_2',
+          tags: {
+            'host': 'cartago'
+          },
+          dataRetention: 7,
+          type: 'gauge'
+        }]
+      });
+    };
+
+    ctx.ds.suggestMetrics({type: 'gauge', tagsQL: 'host=cartago'}).then(result => {
+      expect(result).to.have.length(2);
+      expect(result[0]).to.deep.equal({ text: 'gauge_1', value: 'gauge_1' });
+      expect(result[1]).to.deep.equal({ text: 'gauge_2', value: 'gauge_2' });
+    }).then(v => done(), err => done(err));
+  });
+
   it('should get tags suggestions', done => {
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'GET', '/hawkular/metrics/gauges/tags/host:*');
+      expectRequest(request, 'GET', 'gauges/tags/host:*');
 
       return ctx.$q.when({
         status: 200,
@@ -263,7 +290,7 @@ describe('HawkularDatasource', () => {
 
   it('should get no suggestions on unknown tag', done => {
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'GET', '/hawkular/metrics/gauges/tags/host:*');
+      expectRequest(request, 'GET', 'gauges/tags/host:*');
       return ctx.$q.when({
         status: 204,
         data: {}
@@ -276,7 +303,7 @@ describe('HawkularDatasource', () => {
 
   it('should get tag keys suggestions', done => {
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'GET', '/hawkular/metrics/metrics/tags');
+      expectRequest(request, 'GET', 'metrics/tags');
       return ctx.$q.when({
         status: 200,
         data: ['host', 'app']

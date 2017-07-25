@@ -1,5 +1,5 @@
-import {Datasource} from "../module";
-import Q from "q";
+import {Datasource} from '../module';
+import Q from 'q';
 import {getSettings, expectRequest} from './test-util';
 
 describe('HawkularDatasource with tagsQL', () => {
@@ -38,7 +38,7 @@ describe('HawkularDatasource with tagsQL', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'POST', '/hawkular/metrics/gauges/raw/query');
+      expectRequest(request, 'POST', 'gauges/raw/query');
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
@@ -72,7 +72,7 @@ describe('HawkularDatasource with tagsQL', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'POST', '/hawkular/metrics/gauges/stats/query');
+      expectRequest(request, 'POST', 'gauges/stats/query');
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
@@ -107,7 +107,7 @@ describe('HawkularDatasource with tagsQL', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      expectRequest(request, 'POST', '/hawkular/metrics/gauges/raw/query');
+      expectRequest(request, 'POST', 'gauges/raw/query');
       expect(request.data.limit).to.equal(1);
       expect(request.data.tags).to.equal('type=memory');
 
