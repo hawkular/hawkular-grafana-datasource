@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _ from 'lodash';
 
 export class TagsKVPairsController {
 
@@ -101,6 +101,6 @@ export function modelToString(tags, variablesHelper, options) {
     } else {
       value = tag.value;
     }
-    return tag.name + ':' + value;
+    return `${tag.name}:${value}`;
   }).join(',');
 }

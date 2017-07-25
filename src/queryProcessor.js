@@ -76,12 +76,7 @@ export class QueryProcessor {
   }
 
   rawQuery(target, postData) {
-    const uri = [
-      this.typeResources[target.type],   // gauges or counters
-      target.rate ? 'rate' : 'raw', // raw or rate
-      'query'
-    ];
-    const url = this.url + '/' + uri.join('/');
+    const url = `${this.url}/${this.typeResources[target.type]}/${target.rate ? 'rate' : 'raw'}/query`;
 
     return this.backendSrv.datasourceRequest({
       url: url,
@@ -97,7 +92,7 @@ export class QueryProcessor {
         this.typeResources[target.type],  // gauges, counters or availability
         encodeURIComponent(metric).replace('+', '%20'), // metric name
         'data'];
-      const url = this.url + '/' + uri.join('/');
+      const url = `${this.url}/${this.typeResources[target.type]}/${encodeURIComponent(metric).replace('+', '%20')}/data`;
 
       return this.backendSrv.datasourceRequest({
         url: url,
@@ -277,7 +272,7 @@ export class QueryProcessor {
     } else if (target.timeAggFn == 'max') {
       fnBucket = bucket => bucket.max;
     } // no else case. "live" case was handled before
-    const url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
+    const url = `${this.url}/${this.typeResources[target.type]}/stats/query`;
     delete postData.order;
     postData.buckets = 1;
     postData.stacked = target.seriesAggFn === 'sum';
@@ -293,19 +288,14 @@ export class QueryProcessor {
     return data.map(bucket => {
       return {
         refId: target.refId,
-        target: "Aggregate",
+        target: 'Aggregate',
         datapoints: [[fnBucket(bucket), bucket.start]]
       };
     });
   }
 
   singleStatLiveQuery(target, postData) {
-    const uri = [
-      this.typeResources[target.type], // gauges, counters or availability
-      target.rate ? 'rate' : 'raw', // raw or rate
-      'query'
-    ];
-    const url = this.url + '/' + uri.join('/');
+    const url = `${this.url}/${this.typeResources[target.type]}/${target.rate ? 'rate' : 'raw'}/query`;
     // Set start to now - 5m
     postData.start = Date.now() - 300000;
     return this.backendSrv.datasourceRequest({
@@ -333,7 +323,7 @@ export class QueryProcessor {
     }
     return [{
       refId: target.refId,
-      target: "Aggregate",
+      target: 'Aggregate',
       datapoints: datapoints
     }];
   }

@@ -14,7 +14,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
     this.$q = $q;
 
     this.target = this.datasource.sanitizeTarget(this.target);
-    this.caps = new Capabilities("");
+    this.caps = new Capabilities('');
     this.datasource.getCapabilities().then(caps => {
       this.caps = caps;
       if (caps.TAGS_QUERY_LANGUAGE) {
@@ -99,7 +99,7 @@ export class HawkularDatasourceQueryCtrl extends QueryCtrl {
   }
 
   getMetricOptions() {
-    return this.datasource.suggestQueries(this.target)
+    return this.datasource.suggestMetrics(this.target)
       .then(metrics => [{value: '-- none --', text: '-- none --'}].concat(metrics))
       .then(this.uiSegmentSrv.transformToSegments(false));
       // Options have to be transformed by uiSegmentSrv to be usable by metric-segment-model directive

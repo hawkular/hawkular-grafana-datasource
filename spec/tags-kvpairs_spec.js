@@ -1,5 +1,5 @@
 import {segmentsToModel, modelToSegments} from '../tagsKVPairsController';
-import Q from "q";
+import Q from 'q';
 
 describe('TagsKVPairs', () => {
 
@@ -30,8 +30,8 @@ describe('TagsKVPairs', () => {
     ];
     const result = segmentsToModel(segments);
     expect(result).to.deep.equal([
-      { name: "hostname", value: "*" },
-      { name: "pod", value: "unknown" }
+      { name: 'hostname', value: '*' },
+      { name: 'pod', value: 'unknown' }
     ]);
     done();
   });
@@ -50,8 +50,8 @@ describe('TagsKVPairs', () => {
 
   it('should convert model to segments', done => {
     const result = modelToSegments([
-      { name: "hostname", value: "*" },
-      { name: "pod", value: "unknown" }
+      { name: 'hostname', value: '*' },
+      { name: 'pod', value: 'unknown' }
     ], segmentFactory);
     expect(result).to.deep.equal([
       { type: 'key', value: 'hostname' },

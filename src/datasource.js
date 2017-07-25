@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _ from 'lodash';
 import {VariablesHelper} from './variablesHelper';
 import {Capabilities} from './capabilities';
 import {QueryProcessor} from './queryProcessor';
@@ -101,7 +101,7 @@ export class HawkularDatasource {
       if (response.status === 200 || response.status === 204) {
         return { status: 'success', message: 'Data source is working', title: 'Success' };
       } else {
-        return { status: 'error', message: 'Connection failed (' + response.status + ')', title: 'Error' };
+        return { status: 'error', message: `Connection failed (${response.status})`, title: 'Error' };
       }
     });
   }
@@ -150,12 +150,12 @@ export class HawkularDatasource {
     });
   }
 
-  suggestQueries(target) {
+  suggestMetrics(target) {
     let url = this.url + '/metrics?type=' + target.type;
     if (target.tagsQL && target.tagsQL.length > 0) {
-      url += "&tags=" + this.variablesHelper.resolveForQL(target.tagsQL, {});
+      url += '&tags=' + this.variablesHelper.resolveForQL(target.tagsQL, {});
     } else if (target.tags && target.tags.length > 0) {
-      url += "&tags=" + tagsModelToString(target.tags, this.variablesHelper, {});
+      url += '&tags=' + tagsModelToString(target.tags, this.variablesHelper, {});
     }
     return this.backendSrv.datasourceRequest({
       url: url,
@@ -176,7 +176,7 @@ export class HawkularDatasource {
       return this.q.when([]);
     }
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/' + this.typeResources[target.type] + '/tags/' + key + ':*',
+      url: `${this.url}/${this.typeResources[target.type]}/tags/${key}:*`,
       method: 'GET',
       headers: this.getHeaders(target.tenant)
     }).then(result => result.data.hasOwnProperty(key) ? result.data[key] : [])
@@ -195,19 +195,19 @@ export class HawkularDatasource {
   }
 
   metricFindQuery(query) {
-    let params = "";
+    let params = '';
     if (query !== undefined) {
-      if (query.substr(0, 5) === "tags/") {
+      if (query.substr(0, 5) === 'tags/') {
         return this.findTags(query.substr(5).trim());
       }
       if (query.charAt(0) === '?') {
         params = query;
       } else {
-        params = "?" + query;
+        params = '?' + query;
       }
     }
     return this.runWithResolvedVariables(params, p => this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics' + p,
+      url: `${this.url}/metrics${p}`,
       method: 'GET',
       headers: this.getHeaders()
     }).then(result => {
@@ -219,7 +219,7 @@ export class HawkularDatasource {
 
   findTags(pattern) {
     return this.runWithResolvedVariables(pattern, p => this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics/tags/' + p,
+      url: `${this.url}/metrics/tags/${p}`,
       method: 'GET',
       headers: this.getHeaders()
     }).then(result => {
@@ -250,7 +250,7 @@ export class HawkularDatasource {
       method: 'GET',
       headers: {'Content-Type': 'application/json'}
     }).then(response => response.data['Implementation-Version'])
-    .catch(response => "Unknown");
+    .catch(response => 'Unknown');
   }
 
   getCapabilities() {

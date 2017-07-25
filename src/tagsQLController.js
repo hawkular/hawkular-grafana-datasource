@@ -197,9 +197,9 @@ export function convertFromKVPairs(kvTags) {
     }
     if (tag.value.charAt(0) === '$') {
       // it's a variable
-      return tag.name + " IN [" + tag.value + "]";
+      return `${tag.name} IN [${tag.value}]`;
     }
-    return tag.name + "='" + tag.value + "'";
+    return `${tag.name}='${tag.value}'`;
   }).join(' AND ');
 }
 
@@ -207,7 +207,7 @@ export function convertFromKVPairs(kvTags) {
 // Input segment values: ["fruit", "is in", "pear", "apple", "peach", "<plus-button>", "AND", "color", "=", "green", "<plus-button>"]
 // Output string: "fruit IN [pear, apple, peach] AND color=green"
 export function segmentsToString(segments) {
-  let strTags = "";
+  let strTags = '';
   let i = 0;
   while (i < segments.length) {
     if (segments[i].type === 'plus-button') {
@@ -216,7 +216,7 @@ export function segmentsToString(segments) {
     }
     if (i != 0) {
       // AND/OR
-      strTags += " " + segments[i++].value + " ";
+      strTags += ' ' + segments[i++].value + ' ';
     }
     // Tag name
     const tagName = segments[i++].value;
@@ -231,22 +231,22 @@ export function segmentsToString(segments) {
     } else if (op === OPERATOR_IN) {
       const v = valuesToString(segments, i);
       i = v.i;
-      strTags += tagName + ' IN [' + v.values + ']';
+      strTags += `${tagName} IN [${v.values}]`;
     } else if (op === OPERATOR_NOTIN) {
       const v = valuesToString(segments, i);
       i = v.i;
-      strTags += tagName + ' NOT IN [' + v.values + ']';
+      strTags += `${tagName} NOT IN [${v.values}]`;
     }
   }
   return strTags;
 }
 
 function valuesToString(segments, i) {
-  let values = "";
-  let sep = "";
+  let values = '';
+  let sep = '';
   while (i < segments.length && segments[i].type === 'value') {
     values += sep + valueToString(segments[i++].value);
-    sep = ",";
+    sep = ',';
   }
   return {
     values: values,
@@ -260,7 +260,7 @@ function valueToString(value) {
     // Variable, simple literal or already single-quoted => keep as is
     return value;
   }
-  return "'" + value + "'";
+  return `'${value}'`;
 }
 
 // Example:
@@ -327,7 +327,7 @@ function readLogicalOp(strTags, cursor) {
   if (strTags.substr(cursor, 3).toUpperCase() === 'AND') {
     return { cursor: cursor + 3, value: OPERATOR_AND };
   }
-  throw "Cannot parse tags string: logical operator expected near '" + strTags.substr(cursor, 15) + "'";
+  throw `Cannot parse tags string: logical operator expected near '${strTags.substr(cursor, 15)}'`;
 }
 
 function readWord(strTags, cursor) {
@@ -357,7 +357,7 @@ function readRelationalOp(strTags, cursor) {
   if (strTags.substr(cursor, 6).toUpperCase() === 'NOT IN') {
     return { cursor: cursor + 6, value: OPERATOR_NOTIN };
   }
-  throw "Cannot parse tags string: relational operator expected near '" + strTags.substr(cursor, 15) + "'";
+  throw `Cannot parse tags string: relational operator expected near '${strTags.substr(cursor, 15)}'`;
 }
 
 function readEnumeration(strTags, cursor) {
@@ -374,7 +374,7 @@ function readEnumeration(strTags, cursor) {
     if (strTags.charAt(cursor) === ',') {
       cursor++;
     } else {
-      throw "Cannot parse tags string: unexpected token in enumeration near '" + strTags.substr(cursor, 15) + "'";
+      throw `Cannot parse tags string: unexpected token in enumeration near '${strTags.substr(cursor, 15)}'`;
     }
   }
   return { cursor: cursor, values: values };
