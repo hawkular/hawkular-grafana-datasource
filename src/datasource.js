@@ -90,9 +90,9 @@ export class HawkularDatasource {
 
   testDatasource() {
     // If tenants is unknown at this point (when having per-query tenants)
-    // We do a more basic check to status endpoint
+    // We do a more basic check to / endpoint, which checks authentication in basic-auth mode but not with token/OpenShift
     // Else, it's full connectivity with tenant check
-    const endpoint = this.isTenantPerQuery ? '/status' : '/metrics';
+    const endpoint = this.isTenantPerQuery ? '/' : '/metrics';
     return this.backendSrv.datasourceRequest({
       url: this.url + endpoint,
       method: 'GET',

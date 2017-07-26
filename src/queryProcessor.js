@@ -88,12 +88,7 @@ export class QueryProcessor {
 
   rawQueryLegacy(target, range, metricIds) {
     return this.q.all(metricIds.map(metric => {
-      const uri = [
-        this.typeResources[target.type],  // gauges, counters or availability
-        encodeURIComponent(metric).replace('+', '%20'), // metric name
-        'data'];
       const url = `${this.url}/${this.typeResources[target.type]}/${encodeURIComponent(metric).replace('+', '%20')}/data`;
-
       return this.backendSrv.datasourceRequest({
         url: url,
         params: {

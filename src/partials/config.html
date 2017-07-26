@@ -17,4 +17,8 @@
       <input type="text" class="gf-form-input" ng-model="ctrl.current.jsonData.token">
     </div>
   </div>
+  <div class="gf-form" ng-if="ctrl.current.jsonData.isTenantPerQuery && ctrl.current.jsonData.token">
+    <span class="gf-form-label"><i class="fa fa-exclamation-triangle"></i></span>
+    <span class="gf-form-label">With tenant per query enabled, the token authentication cannot be tested now because it likely depends on the tenant.</span>
+  </div>
 </div>
