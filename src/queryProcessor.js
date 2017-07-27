@@ -4,13 +4,13 @@ const STATS_BUCKETS = 60;
 
 export class QueryProcessor {
 
-  constructor(q, backendSrv, variablesHelper, capabilities, url, headers, typeResources) {
+  constructor(q, backendSrv, variablesHelper, capabilities, url, getHeaders, typeResources) {
     this.q = q;
     this.backendSrv = backendSrv;
     this.variablesHelper = variablesHelper;
     this.capabilities = capabilities;
     this.url = url;
-    this.headers = headers;
+    this.getHeaders = getHeaders;
     this.typeResources = typeResources;
     this.numericMapping = point => [point.value, point.timestamp];
     this.availMapping = point => [point.value == 'up' ? 1 : 0, point.timestamp];
@@ -76,29 +76,19 @@ export class QueryProcessor {
   }
 
   rawQuery(target, postData) {
-    const uri = [
-      this.typeResources[target.type],   // gauges or counters
-      target.rate ? 'rate' : 'raw', // raw or rate
-      'query'
-    ];
-    const url = this.url + '/' + uri.join('/');
+    const url = `${this.url}/${this.typeResources[target.type]}/${target.rate ? 'rate' : 'raw'}/query`;
 
     return this.backendSrv.datasourceRequest({
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processRawResponse(target, response.status == 200 ? response.data : []));
   }
 
   rawQueryLegacy(target, range, metricIds) {
     return this.q.all(metricIds.map(metric => {
-      const uri = [
-        this.typeResources[target.type],  // gauges, counters or availability
-        encodeURIComponent(metric).replace('+', '%20'), // metric name
-        'data'];
-      const url = this.url + '/' + uri.join('/');
-
+      const url = `${this.url}/${this.typeResources[target.type]}/${encodeURIComponent(metric).replace('+', '%20')}/data`;
       return this.backendSrv.datasourceRequest({
         url: url,
         params: {
@@ -106,7 +96,7 @@ export class QueryProcessor {
           end: range.to.valueOf()
         },
         method: 'GET',
-        headers: this.headers
+        headers: this.getHeaders(target.tenant)
       }).then(response => this.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []));
     }));
   }
@@ -168,7 +158,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processStatsResponse(target, response.status == 200 ? response.data : []));
   }
 
@@ -211,7 +201,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processUnmergedStatsResponse(target, response.status == 200 ? response.data : []));
   }
 
@@ -277,7 +267,7 @@ export class QueryProcessor {
     } else if (target.timeAggFn == 'max') {
       fnBucket = bucket => bucket.max;
     } // no else case. "live" case was handled before
-    const url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
+    const url = `${this.url}/${this.typeResources[target.type]}/stats/query`;
     delete postData.order;
     postData.buckets = 1;
     postData.stacked = target.seriesAggFn === 'sum';
@@ -285,7 +275,7 @@ export class QueryProcessor {
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []));
   }
 
@@ -293,26 +283,21 @@ export class QueryProcessor {
     return data.map(bucket => {
       return {
         refId: target.refId,
-        target: "Aggregate",
+        target: 'Aggregate',
         datapoints: [[fnBucket(bucket), bucket.start]]
       };
     });
   }
 
   singleStatLiveQuery(target, postData) {
-    const uri = [
-      this.typeResources[target.type], // gauges, counters or availability
-      target.rate ? 'rate' : 'raw', // raw or rate
-      'query'
-    ];
-    const url = this.url + '/' + uri.join('/');
+    const url = `${this.url}/${this.typeResources[target.type]}/${target.rate ? 'rate' : 'raw'}/query`;
     // Set start to now - 5m
     postData.start = Date.now() - 300000;
     return this.backendSrv.datasourceRequest({
       url: url,
       data: postData,
       method: 'POST',
-      headers: this.headers
+      headers: this.getHeaders(target.tenant)
     }).then(response => this.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []));
   }
 
@@ -333,7 +318,7 @@ export class QueryProcessor {
     }
     return [{
       refId: target.refId,
-      target: "Aggregate",
+      target: 'Aggregate',
       datapoints: datapoints
     }];
   }

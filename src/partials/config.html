@@ -4,7 +4,8 @@
 <h3 class="page-heading">Hawkular settings</h3>
 
 <div class="gf-form-group">
-  <div class="gf-form-inline">
+  <gf-form-switch class="gf-form" label="Tenant per query" checked="ctrl.current.jsonData.isTenantPerQuery" switch-class="max-width-6"></gf-form-switch>
+  <div class="gf-form-inline" ng-if="!ctrl.current.jsonData.isTenantPerQuery">
     <div class="gf-form max-width-30">
       <span class="gf-form-label width-7">Tenant</span>
       <input type="text" class="gf-form-input" ng-model="ctrl.current.jsonData.tenant" placeholder="default" required>
@@ -15,5 +16,9 @@
       <span class="gf-form-label width-7">Token</span>
       <input type="text" class="gf-form-input" ng-model="ctrl.current.jsonData.token">
     </div>
+  </div>
+  <div class="gf-form" ng-if="ctrl.current.jsonData.isTenantPerQuery && ctrl.current.jsonData.token">
+    <span class="gf-form-label"><i class="fa fa-exclamation-triangle"></i></span>
+    <span class="gf-form-label">With tenant per query enabled, the token authentication cannot be tested now because it likely depends on the tenant.</span>
   </div>
 </div>

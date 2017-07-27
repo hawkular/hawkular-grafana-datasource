@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _ from 'lodash';
 
 export class VariablesHelper {
 
@@ -15,7 +15,7 @@ export class VariablesHelper {
         if (target.indexOf(name) >= 0) {
           const values = this.getVarValues(name, options.scopedVars);
           const newResolved = [];
-          const regex = new RegExp("\\" + name, "g");
+          const regex = new RegExp('\\' + name, 'g');
           values.forEach(val => {
             resolved.forEach(newTarget => {
               newResolved.push(newTarget.replace(regex, val));
@@ -31,9 +31,9 @@ export class VariablesHelper {
   resolveForQL(target, options) {
     return this.templateSrv.replace(target, options.scopedVars, values => {
       if (_.isArray(values)) {
-        return values.map(v => "'" + v + "'").join(',');
+        return values.map(v => `'${v}'`).join(',');
       }
-      return "'" + values + "'";
+      return `'${values}'`;
     });
   }
 
