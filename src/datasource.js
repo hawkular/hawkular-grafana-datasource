@@ -8,7 +8,8 @@ export class HawkularDatasource {
 
   constructor(instanceSettings, $q, backendSrv, templateSrv) {
     this.type = instanceSettings.type;
-    this.url = instanceSettings.url;
+    this.metricsUrl = instanceSettings.url + '/metrics';
+    this.alertsUrl = instanceSettings.url + '/alerts';
     this.name = instanceSettings.name;
     this.tenant = instanceSettings.jsonData.tenant;
     this.isTenantPerQuery = instanceSettings.jsonData.isTenantPerQuery;
@@ -27,7 +28,7 @@ export class HawkularDatasource {
     };
     this.variablesHelper = new VariablesHelper(templateSrv);
     this.capabilitiesPromise = this.queryVersion().then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.url,
+    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.metricsUrl,
             this.getHeaders.bind(this), this.typeResources);
   }
 
@@ -94,7 +95,7 @@ export class HawkularDatasource {
     // Else, it's full connectivity with tenant check
     const endpoint = this.isTenantPerQuery ? '/' : '/metrics';
     return this.backendSrv.datasourceRequest({
-      url: this.url + endpoint,
+      url: this.metricsUrl + endpoint,
       method: 'GET',
       headers: this.getHeaders()
     }).then(response => {
@@ -108,8 +109,11 @@ export class HawkularDatasource {
 
   annotationQuery(options) {
     const metricIds = this.variablesHelper.resolve(options.annotation.query, options);
+    if (options.annotation.type === 'alert') {
+      return this.queryAlerts(metricIds, options);
+    }
     return this.backendSrv.datasourceRequest({
-      url: `${this.url}/${options.annotation.type}/raw/query`,
+      url: `${this.metricsUrl}/${options.annotation.type}/raw/query`,
       data: {
         start: options.range.from.valueOf(),
         end: options.range.to.valueOf(),
@@ -150,8 +154,32 @@ export class HawkularDatasource {
     });
   }
 
+  queryAlerts(ids, options) {
+    return this.backendSrv.datasourceRequest({
+      url: `${this.alertsUrl}/events`,
+      params: {
+        startTime: options.range.from.valueOf(),
+        endTime: options.range.to.valueOf(),
+        triggerIds: ids
+      },
+      method: 'GET',
+      headers: this.getHeaders(options.annotation.tenant)
+    }).then(response => response.status == 200 ? response.data : [])
+    .then(events => {
+      return events.map(event => {
+        return {
+          annotation: options.annotation,
+          time: event.ctime,
+          title: options.annotation.name,
+          text: event.text,
+          tags: event.status
+        };
+      });
+    });
+  }
+
   suggestMetrics(target) {
-    let url = this.url + '/metrics?type=' + target.type;
+    let url = this.metricsUrl + '/metrics?type=' + target.type;
     if (target.tagsQL && target.tagsQL.length > 0) {
       url += '&tags=' + this.variablesHelper.resolveForQL(target.tagsQL, {});
     } else if (target.tags && target.tags.length > 0) {
@@ -176,7 +204,7 @@ export class HawkularDatasource {
       return this.q.when([]);
     }
     return this.backendSrv.datasourceRequest({
-      url: `${this.url}/${this.typeResources[target.type]}/tags/${key}:*`,
+      url: `${this.metricsUrl}/${this.typeResources[target.type]}/tags/${key}:*`,
       method: 'GET',
       headers: this.getHeaders(target.tenant)
     }).then(result => result.data.hasOwnProperty(key) ? result.data[key] : [])
@@ -187,7 +215,7 @@ export class HawkularDatasource {
 
   suggestTagKeys(target) {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/metrics/tags',
+      url: this.metricsUrl + '/metrics/tags',
       method: 'GET',
       headers: this.getHeaders(target.tenant)
     }).then(response => response.status == 200 ? response.data : [])
@@ -207,7 +235,7 @@ export class HawkularDatasource {
       }
     }
     return this.runWithResolvedVariables(params, p => this.backendSrv.datasourceRequest({
-      url: `${this.url}/metrics${p}`,
+      url: `${this.metricsUrl}/metrics${p}`,
       method: 'GET',
       headers: this.getHeaders()
     }).then(result => {
@@ -219,7 +247,7 @@ export class HawkularDatasource {
 
   findTags(pattern) {
     return this.runWithResolvedVariables(pattern, p => this.backendSrv.datasourceRequest({
-      url: `${this.url}/metrics/tags/${p}`,
+      url: `${this.metricsUrl}/metrics/tags/${p}`,
       method: 'GET',
       headers: this.getHeaders()
     }).then(result => {
@@ -246,7 +274,7 @@ export class HawkularDatasource {
 
   queryVersion() {
     return this.backendSrv.datasourceRequest({
-      url: this.url + '/status',
+      url: this.metricsUrl + '/status',
       method: 'GET',
       headers: {'Content-Type': 'application/json'}
     }).then(response => response.data['Implementation-Version'])

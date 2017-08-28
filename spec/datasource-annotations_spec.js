@@ -1,6 +1,6 @@
 import {Datasource} from '../module';
 import Q from 'q';
-import {getSettings, expectRequest} from './test-util';
+import {getSettings, expectRequest, expectAlertRequest} from './test-util';
 
 describe('HawkularDatasource annotations', () => {
   let ctx = {};
@@ -226,6 +226,53 @@ describe('HawkularDatasource annotations', () => {
       expect(result[1].title).to.equal('Avail');
       expect(result[1].tags).to.be.undefined;
       expect(result[1].text).to.equal('down');
+    }).then(v => done(), err => done(err));
+  });
+
+  it('should query annotations from alerts', done => {
+
+    let options = {
+      range: {
+        from: 15,
+        to: 30
+      },
+      annotation: {
+        query: 'my.trigger',
+        name: 'Alert',
+        type: 'alert'
+      }
+    };
+
+    ctx.backendSrv.datasourceRequest = request => {
+      expectAlertRequest(request, 'GET', 'events');
+
+      return ctx.$q.when({
+        status: 200,
+        data: [{
+          ctime: 13,
+          status: 'OPEN',
+          text: 'Some text'
+        }, {
+          ctime: 19,
+          status: 'OPEN',
+          text: 'Some text'
+        }]
+      });
+    };
+
+    ctx.ds.annotationQuery(options).then(result => {
+      expect(result).to.have.length(2);
+      expect(result[0].annotation).to.deep.equal({ query: 'my.trigger', name: 'Alert', type: 'alert' });
+      expect(result[0].time).to.equal(13);
+      expect(result[0].title).to.equal('Alert');
+      expect(result[0].tags).to.equal('OPEN');
+      expect(result[0].text).to.equal('Some text');
+
+      expect(result[1].annotation).to.deep.equal({ query: 'my.trigger', name: 'Alert', type: 'alert' });
+      expect(result[1].time).to.equal(19);
+      expect(result[1].title).to.equal('Alert');
+      expect(result[1].tags).to.equal('OPEN');
+      expect(result[1].text).to.equal('Some text');
     }).then(v => done(), err => done(err));
   });
 });
