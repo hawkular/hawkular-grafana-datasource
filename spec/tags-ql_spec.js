@@ -203,6 +203,27 @@ describe('TagsQL', () => {
     done();
   });
 
+  it('should accept dot in variable name', done => {
+    const segments = [
+      { type: 'key', value: 'pod.id' },
+      { type: 'operator', value: 'is in' },
+      { type: 'value', value: "$var_iable_01234" }
+    ];
+    const result = segmentsToString(segments);
+    expect(result).to.deep.equal("pod.id IN [$var_iable_01234]");
+    done();
+  });
+
+  it('should accept dot in variable name for back conversion', done => {
+    const result = stringToSegments("pod.id NOT IN [$var_iable_01234]", segmentFactory);
+    expect(result).to.deep.equal([
+      { type: 'key', value: 'pod.id' },
+      { type: 'operator', value: 'is not in' },
+      { type: 'value', value: "$var_iable_01234" }
+    ]);
+    done();
+  });
+
   it('should convert string with enumeration to segments', done => {
     const result = stringToSegments("hostname AND pod NOT IN ['abc','def']", segmentFactory);
     expect(result).to.deep.equal([
