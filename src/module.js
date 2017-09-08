@@ -1,14 +1,10 @@
 import {HawkularDatasource} from './datasource';
 import {HawkularDatasourceQueryCtrl} from './query_ctrl';
-
-class HawkularConfigCtrl {}
-HawkularConfigCtrl.templateUrl = 'partials/config.html';
+import {HawkularConfigCtrl} from './config_ctrl';
+import {HawkularAnnotationsQueryCtrl} from './annotation_ctrl';
 
 class HawkularQueryOptionsCtrl {}
 HawkularQueryOptionsCtrl.templateUrl = 'partials/query.options.html';
-
-class HawkularAnnotationsQueryCtrl {}
-HawkularAnnotationsQueryCtrl.templateUrl = 'partials/annotations.editor.html';
 
 export {
   HawkularDatasource as Datasource,

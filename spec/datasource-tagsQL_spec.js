@@ -1,33 +1,10 @@
-import {Datasource} from "../module";
-import Q from "q";
+import {Datasource} from '../module';
+import Q from 'q';
+import {getSettings, expectRequest} from './test-util';
 
 describe('HawkularDatasource with tagsQL', () => {
   const ctx = {};
-  const hProtocol = 'https';
-  const hHostname = 'test.com';
-  const hPort = '876';
-  const hPath = 'hawkular/metrics';
-  const instanceSettings = {
-    url: hProtocol + '://' + hHostname + ':' + hPort + '/' + hPath,
-    jsonData: {
-      tenant: 'test-tenant'
-    }
-  };
-
-  const parsePathElements = request => {
-    expect(request.method).to.equal('POST');
-    expect(request.headers).to.have.property('Hawkular-Tenant', instanceSettings.jsonData.tenant);
-
-    const parser = document.createElement('a');
-    parser.href = request.url;
-
-    expect(parser).to.have.property('protocol', hProtocol + ':');
-    expect(parser).to.have.property('hostname', hHostname);
-    expect(parser).to.have.property('port', hPort);
-    expect(parser).to.have.property('pathname');
-
-    return parser.pathname.split('/').filter(e => e.length != 0);
-  }
+  const instanceSettings = getSettings();
 
   beforeEach(() => {
     ctx.$q = Q;
@@ -61,10 +38,7 @@ describe('HawkularDatasource with tagsQL', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      const pathElements = parsePathElements(request);
-      expect(pathElements).to.have.length(5);
-      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
-      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
+      expectRequest(request, 'POST', 'gauges/raw/query');
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
@@ -98,10 +72,7 @@ describe('HawkularDatasource with tagsQL', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      const pathElements = parsePathElements(request);
-      expect(pathElements).to.have.length(5);
-      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
-      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'stats', 'query']);
+      expectRequest(request, 'POST', 'gauges/stats/query');
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
@@ -136,10 +107,7 @@ describe('HawkularDatasource with tagsQL', () => {
     };
 
     ctx.backendSrv.datasourceRequest = request => {
-      const pathElements = parsePathElements(request);
-      expect(pathElements).to.have.length(5);
-      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
-      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
+      expectRequest(request, 'POST', 'gauges/raw/query');
       expect(request.data.limit).to.equal(1);
       expect(request.data.tags).to.equal('type=memory');
 

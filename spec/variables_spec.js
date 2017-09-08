@@ -18,8 +18,7 @@ describe('Variables', () => {
         // Quick & simple emulation of the real templateSrv.replace
         let result = target;
         if (!fmt) {
-          fmt = values => (typeof values == "string") ? values
-               : '{' + values.join(',') + '}';
+          fmt = values => (typeof values == "string") ? values : `{${values.join(',')}}`;
         }
         ctx.templateSrv.variables.forEach(v => {
           const values = scopedVars[v.name] ? scopedVars[v.name].value : v.values;

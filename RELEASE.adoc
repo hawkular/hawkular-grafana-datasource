@@ -29,7 +29,17 @@ Some stuff to keep in mind:
 
 = Post-release steps
 
-- Draft a new release: https://github.com/hawkular/hawkular-grafana-datasource/releases
-- Update Docker image & test it & publish it
-- Update the Grafana plugins repository: on https://github.com/grafana/grafana-plugin-repository, add new version & SHA1 to repo.json
-- Submit PR
+* Draft a new release: https://github.com/hawkular/hawkular-grafana-datasource/releases
+* Update Docker image & smoke test it & publish it
++
+```bash
+docker build -t hawkular/hawkular-grafana-datasource .
+docker run -i -p 3000:3000 --name hawkular-grafana-datasource --rm hawkular/hawkular-grafana-datasource:latest
+docker images
+docker tag xyz hawkular/hawkular-grafana-datasource:1.x.x
+docker push hawkular/hawkular-grafana-datasource:1.x.x
+docker push hawkular/hawkular-grafana-datasource:latest
+```
+
+* Update the Grafana plugins repository: on https://github.com/grafana/grafana-plugin-repository, add new version & SHA1 to repo.json
+* Submit PR
