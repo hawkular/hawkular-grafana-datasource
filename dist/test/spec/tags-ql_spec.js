@@ -137,6 +137,19 @@ describe('TagsQL', function () {
     done();
   });
 
+  it('should accept dot in variable name', function (done) {
+    var segments = [{ type: 'key', value: 'pod.id' }, { type: 'operator', value: 'is in' }, { type: 'value', value: "$var_iable_01234" }];
+    var result = (0, _tagsQLController.segmentsToString)(segments);
+    expect(result).to.deep.equal("pod.id IN [$var_iable_01234]");
+    done();
+  });
+
+  it('should accept dot in variable name for back conversion', function (done) {
+    var result = (0, _tagsQLController.stringToSegments)("pod.id NOT IN [$var_iable_01234]", segmentFactory);
+    expect(result).to.deep.equal([{ type: 'key', value: 'pod.id' }, { type: 'operator', value: 'is not in' }, { type: 'value', value: "$var_iable_01234" }]);
+    done();
+  });
+
   it('should convert string with enumeration to segments', function (done) {
     var result = (0, _tagsQLController.stringToSegments)("hostname AND pod NOT IN ['abc','def']", segmentFactory);
     expect(result).to.deep.equal([{ type: 'key', value: 'hostname' }, { type: 'operator', value: 'exists' }, { type: 'condition', value: 'AND' }, { type: 'key', value: 'pod' }, { type: 'operator', value: 'is not in' }, { type: 'value', value: "'abc'" }, { type: 'value', value: "'def'" }]);

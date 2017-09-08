@@ -1,6 +1,6 @@
-"use strict";
+'use strict';
 
-System.register(["lodash"], function (_export, _context) {
+System.register(['lodash'], function (_export, _context) {
   "use strict";
 
   var _, _createClass, VariablesHelper;
@@ -34,7 +34,7 @@ System.register(["lodash"], function (_export, _context) {
         };
       }();
 
-      _export("VariablesHelper", VariablesHelper = function () {
+      _export('VariablesHelper', VariablesHelper = function () {
         function VariablesHelper(templateSrv) {
           _classCallCheck(this, VariablesHelper);
 
@@ -42,7 +42,7 @@ System.register(["lodash"], function (_export, _context) {
         }
 
         _createClass(VariablesHelper, [{
-          key: "resolve",
+          key: 'resolve',
           value: function resolve(target, options) {
             var _this = this;
 
@@ -56,7 +56,7 @@ System.register(["lodash"], function (_export, _context) {
                 if (target.indexOf(name) >= 0) {
                   var values = _this.getVarValues(name, options.scopedVars);
                   var newResolved = [];
-                  var regex = new RegExp("\\" + name, "g");
+                  var regex = new RegExp('\\' + name, 'g');
                   values.forEach(function (val) {
                     resolved.forEach(function (newTarget) {
                       newResolved.push(newTarget.replace(regex, val));
@@ -69,19 +69,19 @@ System.register(["lodash"], function (_export, _context) {
             return resolved;
           }
         }, {
-          key: "resolveForQL",
+          key: 'resolveForQL',
           value: function resolveForQL(target, options) {
             return this.templateSrv.replace(target, options.scopedVars, function (values) {
               if (_.isArray(values)) {
                 return values.map(function (v) {
-                  return "'" + v + "'";
+                  return '\'' + v + '\'';
                 }).join(',');
               }
-              return "'" + values + "'";
+              return '\'' + values + '\'';
             });
           }
         }, {
-          key: "getVarValues",
+          key: 'getVarValues',
           value: function getVarValues(name, scopedVars) {
             var values = this.templateSrv.replace(name, scopedVars);
             // result might be in like "{id1,id2,id3}" (as string)
@@ -91,7 +91,7 @@ System.register(["lodash"], function (_export, _context) {
             return [values];
           }
         }, {
-          key: "exists",
+          key: 'exists',
           value: function exists(name) {
             return this.templateSrv.variableExists(name);
           }
@@ -100,7 +100,7 @@ System.register(["lodash"], function (_export, _context) {
         return VariablesHelper;
       }());
 
-      _export("VariablesHelper", VariablesHelper);
+      _export('VariablesHelper', VariablesHelper);
     }
   };
 });

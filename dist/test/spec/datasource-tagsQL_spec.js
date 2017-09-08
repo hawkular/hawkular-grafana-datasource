@@ -1,42 +1,18 @@
-"use strict";
+'use strict';
 
-var _module = require("../module");
+var _module = require('../module');
 
-var _q = require("q");
+var _q = require('q');
 
 var _q2 = _interopRequireDefault(_q);
+
+var _testUtil = require('./test-util');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 describe('HawkularDatasource with tagsQL', function () {
   var ctx = {};
-  var hProtocol = 'https';
-  var hHostname = 'test.com';
-  var hPort = '876';
-  var hPath = 'hawkular/metrics';
-  var instanceSettings = {
-    url: hProtocol + '://' + hHostname + ':' + hPort + '/' + hPath,
-    jsonData: {
-      tenant: 'test-tenant'
-    }
-  };
-
-  var parsePathElements = function parsePathElements(request) {
-    expect(request.method).to.equal('POST');
-    expect(request.headers).to.have.property('Hawkular-Tenant', instanceSettings.jsonData.tenant);
-
-    var parser = document.createElement('a');
-    parser.href = request.url;
-
-    expect(parser).to.have.property('protocol', hProtocol + ':');
-    expect(parser).to.have.property('hostname', hHostname);
-    expect(parser).to.have.property('port', hPort);
-    expect(parser).to.have.property('pathname');
-
-    return parser.pathname.split('/').filter(function (e) {
-      return e.length != 0;
-    });
-  };
+  var instanceSettings = (0, _testUtil.getSettings)();
 
   beforeEach(function () {
     ctx.$q = _q2.default;
@@ -76,10 +52,7 @@ describe('HawkularDatasource with tagsQL', function () {
     };
 
     ctx.backendSrv.datasourceRequest = function (request) {
-      var pathElements = parsePathElements(request);
-      expect(pathElements).to.have.length(5);
-      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
-      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
+      (0, _testUtil.expectRequest)(request, 'POST', 'gauges/raw/query');
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
@@ -117,10 +90,7 @@ describe('HawkularDatasource with tagsQL', function () {
     };
 
     ctx.backendSrv.datasourceRequest = function (request) {
-      var pathElements = parsePathElements(request);
-      expect(pathElements).to.have.length(5);
-      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
-      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'stats', 'query']);
+      (0, _testUtil.expectRequest)(request, 'POST', 'gauges/stats/query');
       expect(request.data).to.deep.equal({
         start: options.range.from,
         end: options.range.to,
@@ -159,10 +129,7 @@ describe('HawkularDatasource with tagsQL', function () {
     };
 
     ctx.backendSrv.datasourceRequest = function (request) {
-      var pathElements = parsePathElements(request);
-      expect(pathElements).to.have.length(5);
-      expect(pathElements.slice(0, 2)).to.deep.equal(hPath.split('/'));
-      expect(pathElements.slice(2)).to.deep.equal(['gauges', 'raw', 'query']);
+      (0, _testUtil.expectRequest)(request, 'POST', 'gauges/raw/query');
       expect(request.data.limit).to.equal(1);
       expect(request.data.tags).to.equal('type=memory');
 

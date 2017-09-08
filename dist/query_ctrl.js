@@ -89,7 +89,7 @@ System.register(['app/plugins/sdk', './css/query-editor.css!', './capabilities',
           _this.$q = $q;
 
           _this.target = _this.datasource.sanitizeTarget(_this.target);
-          _this.caps = new Capabilities("");
+          _this.caps = new Capabilities('');
           _this.datasource.getCapabilities().then(function (caps) {
             _this.caps = caps;
             if (caps.TAGS_QUERY_LANGUAGE) {
@@ -187,7 +187,7 @@ System.register(['app/plugins/sdk', './css/query-editor.css!', './capabilities',
         }, {
           key: 'getMetricOptions',
           value: function getMetricOptions() {
-            return this.datasource.suggestQueries(this.target).then(function (metrics) {
+            return this.datasource.suggestMetrics(this.target).then(function (metrics) {
               return [{ value: '-- none --', text: '-- none --' }].concat(metrics);
             }).then(this.uiSegmentSrv.transformToSegments(false));
             // Options have to be transformed by uiSegmentSrv to be usable by metric-segment-model directive

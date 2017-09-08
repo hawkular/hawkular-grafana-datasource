@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['./datasource', './query_ctrl'], function (_export, _context) {
+System.register(['./datasource', './query_ctrl', './config_ctrl', './annotation_ctrl'], function (_export, _context) {
   "use strict";
 
-  var HawkularDatasource, HawkularDatasourceQueryCtrl, HawkularConfigCtrl, HawkularQueryOptionsCtrl, HawkularAnnotationsQueryCtrl;
+  var HawkularDatasource, HawkularDatasourceQueryCtrl, HawkularConfigCtrl, HawkularAnnotationsQueryCtrl, HawkularQueryOptionsCtrl;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -16,25 +16,17 @@ System.register(['./datasource', './query_ctrl'], function (_export, _context) {
       HawkularDatasource = _datasource.HawkularDatasource;
     }, function (_query_ctrl) {
       HawkularDatasourceQueryCtrl = _query_ctrl.HawkularDatasourceQueryCtrl;
+    }, function (_config_ctrl) {
+      HawkularConfigCtrl = _config_ctrl.HawkularConfigCtrl;
+    }, function (_annotation_ctrl) {
+      HawkularAnnotationsQueryCtrl = _annotation_ctrl.HawkularAnnotationsQueryCtrl;
     }],
     execute: function () {
-      _export('ConfigCtrl', HawkularConfigCtrl = function HawkularConfigCtrl() {
-        _classCallCheck(this, HawkularConfigCtrl);
-      });
-
-      HawkularConfigCtrl.templateUrl = 'partials/config.html';
-
       _export('QueryOptionsCtrl', HawkularQueryOptionsCtrl = function HawkularQueryOptionsCtrl() {
         _classCallCheck(this, HawkularQueryOptionsCtrl);
       });
 
       HawkularQueryOptionsCtrl.templateUrl = 'partials/query.options.html';
-
-      _export('AnnotationsQueryCtrl', HawkularAnnotationsQueryCtrl = function HawkularAnnotationsQueryCtrl() {
-        _classCallCheck(this, HawkularAnnotationsQueryCtrl);
-      });
-
-      HawkularAnnotationsQueryCtrl.templateUrl = 'partials/annotations.editor.html';
 
       _export('Datasource', HawkularDatasource);
 

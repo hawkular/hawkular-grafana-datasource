@@ -55,7 +55,7 @@ var TagsKVPairsController = exports.TagsKVPairsController = function () {
         });
       } else if (segment.type === 'value') {
         var key = segments[$index - 2].value;
-        return this.datasource.suggestTags(this.targetSupplier().type, key).then(function (tags) {
+        return this.datasource.suggestTags(this.targetSupplier(), key).then(function (tags) {
           return [{ text: ' *', value: ' *' }].concat(_toConsumableArray(tags));
         }).then(this.uiSegmentSrv.transformToSegments(false));
       }
@@ -64,7 +64,7 @@ var TagsKVPairsController = exports.TagsKVPairsController = function () {
     key: 'getTagKeys',
     value: function getTagKeys() {
       if (this.fetchAllTagsCapability) {
-        return this.datasource.suggestTagKeys().then(this.uiSegmentSrv.transformToSegments(false));
+        return this.datasource.suggestTagKeys(this.targetSupplier()).then(this.uiSegmentSrv.transformToSegments(false));
       } else {
         return this.$q.when([]);
       }

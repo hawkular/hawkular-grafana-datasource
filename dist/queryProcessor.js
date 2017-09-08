@@ -37,7 +37,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
       STATS_BUCKETS = 60;
 
       _export('QueryProcessor', QueryProcessor = function () {
-        function QueryProcessor(q, backendSrv, variablesHelper, capabilities, url, headers, typeResources) {
+        function QueryProcessor(q, backendSrv, variablesHelper, capabilities, url, getHeaders, typeResources) {
           _classCallCheck(this, QueryProcessor);
 
           this.q = q;
@@ -45,7 +45,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
           this.variablesHelper = variablesHelper;
           this.capabilities = capabilities;
           this.url = url;
-          this.headers = headers;
+          this.getHeaders = getHeaders;
           this.typeResources = typeResources;
           this.numericMapping = function (point) {
             return [point.value, point.timestamp];
@@ -66,7 +66,6 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
                 end: options.range.to.valueOf(),
                 order: 'ASC'
               };
-              var multipleMetrics = true;
               if (target.id) {
                 var metricIds = _this.variablesHelper.resolve(target.id, options);
                 if (caps.QUERY_POST_ENDPOINTS) {
@@ -122,16 +121,13 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
           value: function rawQuery(target, postData) {
             var _this2 = this;
 
-            var uri = [this.typeResources[target.type], // gauges or counters
-            target.rate ? 'rate' : 'raw', // raw or rate
-            'query'];
-            var url = this.url + '/' + uri.join('/');
+            var url = this.url + '/' + this.typeResources[target.type] + '/' + (target.rate ? 'rate' : 'raw') + '/query';
 
             return this.backendSrv.datasourceRequest({
               url: url,
               data: postData,
               method: 'POST',
-              headers: this.headers
+              headers: this.getHeaders(target.tenant)
             }).then(function (response) {
               return _this2.processRawResponse(target, response.status == 200 ? response.data : []);
             });
@@ -142,11 +138,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             var _this3 = this;
 
             return this.q.all(metricIds.map(function (metric) {
-              var uri = [_this3.typeResources[target.type], // gauges, counters or availability
-              encodeURIComponent(metric).replace('+', '%20'), // metric name
-              'data'];
-              var url = _this3.url + '/' + uri.join('/');
-
+              var url = _this3.url + '/' + _this3.typeResources[target.type] + '/' + encodeURIComponent(metric).replace('+', '%20') + '/data';
               return _this3.backendSrv.datasourceRequest({
                 url: url,
                 params: {
@@ -154,7 +146,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
                   end: range.to.valueOf()
                 },
                 method: 'GET',
-                headers: _this3.headers
+                headers: _this3.getHeaders(target.tenant)
               }).then(function (response) {
                 return _this3.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []);
               });
@@ -224,7 +216,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
               url: url,
               data: postData,
               method: 'POST',
-              headers: this.headers
+              headers: this.getHeaders(target.tenant)
             }).then(function (response) {
               return _this5.processStatsResponse(target, response.status == 200 ? response.data : []);
             });
@@ -234,7 +226,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
           value: function processStatsResponse(target, data) {
             var _this6 = this;
 
-            // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}]
+            // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
             return target.stats.map(function (stat) {
               var percentile = _this6.getPercentileValue(stat);
               if (percentile) {
@@ -282,7 +274,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
               url: url,
               data: postData,
               method: 'POST',
-              headers: this.headers
+              headers: this.getHeaders(target.tenant)
             }).then(function (response) {
               return _this7.processUnmergedStatsResponse(target, response.status == 200 ? response.data : []);
             });
@@ -294,7 +286,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
 
             // Response example:
             // {"gauge": {"my_metric": [
-            //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{value: 105.0, (...)}]}
+            //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}
             // ]}}
             var series = [];
             var allMetrics = data[target.type];
@@ -389,7 +381,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
               url: url,
               data: postData,
               method: 'POST',
-              headers: this.headers
+              headers: this.getHeaders(target.tenant)
             }).then(function (response) {
               return _this9.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
             });
@@ -400,7 +392,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             return data.map(function (bucket) {
               return {
                 refId: target.refId,
-                target: "Aggregate",
+                target: 'Aggregate',
                 datapoints: [[fnBucket(bucket), bucket.start]]
               };
             });
@@ -410,17 +402,14 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
           value: function singleStatLiveQuery(target, postData) {
             var _this10 = this;
 
-            var uri = [this.typeResources[target.type], // gauges, counters or availability
-            target.rate ? 'rate' : 'raw', // raw or rate
-            'query'];
-            var url = this.url + '/' + uri.join('/');
+            var url = this.url + '/' + this.typeResources[target.type] + '/' + (target.rate ? 'rate' : 'raw') + '/query';
             // Set start to now - 5m
             postData.start = Date.now() - 300000;
             return this.backendSrv.datasourceRequest({
               url: url,
               data: postData,
               method: 'POST',
-              headers: this.headers
+              headers: this.getHeaders(target.tenant)
             }).then(function (response) {
               return _this10.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
             });
@@ -457,7 +446,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             }
             return [{
               refId: target.refId,
-              target: "Aggregate",
+              target: 'Aggregate',
               datapoints: datapoints
             }];
           }

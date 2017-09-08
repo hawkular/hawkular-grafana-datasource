@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
@@ -7,7 +7,7 @@ exports.VariablesHelper = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _lodash = require("lodash");
+var _lodash = require('lodash');
 
 var _lodash2 = _interopRequireDefault(_lodash);
 
@@ -23,7 +23,7 @@ var VariablesHelper = exports.VariablesHelper = function () {
   }
 
   _createClass(VariablesHelper, [{
-    key: "resolve",
+    key: 'resolve',
     value: function resolve(target, options) {
       var _this = this;
 
@@ -37,7 +37,7 @@ var VariablesHelper = exports.VariablesHelper = function () {
           if (target.indexOf(name) >= 0) {
             var values = _this.getVarValues(name, options.scopedVars);
             var newResolved = [];
-            var regex = new RegExp("\\" + name, "g");
+            var regex = new RegExp('\\' + name, 'g');
             values.forEach(function (val) {
               resolved.forEach(function (newTarget) {
                 newResolved.push(newTarget.replace(regex, val));
@@ -50,19 +50,19 @@ var VariablesHelper = exports.VariablesHelper = function () {
       return resolved;
     }
   }, {
-    key: "resolveForQL",
+    key: 'resolveForQL',
     value: function resolveForQL(target, options) {
       return this.templateSrv.replace(target, options.scopedVars, function (values) {
         if (_lodash2.default.isArray(values)) {
           return values.map(function (v) {
-            return "'" + v + "'";
+            return '\'' + v + '\'';
           }).join(',');
         }
-        return "'" + values + "'";
+        return '\'' + values + '\'';
       });
     }
   }, {
-    key: "getVarValues",
+    key: 'getVarValues',
     value: function getVarValues(name, scopedVars) {
       var values = this.templateSrv.replace(name, scopedVars);
       // result might be in like "{id1,id2,id3}" (as string)
@@ -72,7 +72,7 @@ var VariablesHelper = exports.VariablesHelper = function () {
       return [values];
     }
   }, {
-    key: "exists",
+    key: 'exists',
     value: function exists(name) {
       return this.templateSrv.variableExists(name);
     }

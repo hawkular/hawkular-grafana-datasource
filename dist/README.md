@@ -1,13 +1,14 @@
 # Hawkular Datasource for Grafana
 
-This project is the Hawkular Datasource plugin for Grafana 3. It works with:
+This project is the Hawkular Datasource plugin for Grafana. It works with:
 
-* Metrics standalone servers as well
-* Hawkular servers, starting from version Alpha13
+* Hawkular Metrics (standalone)
+* Hawkular Services, starting from version Alpha13
+* OpenShift with Hawkular Metrics
 
 ## Configuration
 
-The datasource URL must point to the Hawkular Metrics service, e.g. `http://myhost:8080/hawkular/metrics`
+The datasource URL must point to the Hawkular server, e.g. `http://myhost:8080/hawkular` (without ending `/metrics`)
 
 Access: both `proxy` and `direct` modes should work in most configurations. Some earlier versions of Hawkular Metrics had a bug with CORS headers, that prevented the use of `direct` mode here.
 If you want to use `direct` mode (that is, direct calls from client browser to Hawkular REST API), and if you have setup CORS restrictions in Hawkular, make sure to allow the Grafana server origin in Metrics' configuration.
@@ -79,7 +80,9 @@ They can also be used in tag values, after operators _=_ / _!=_ / _is in_ / _is 
 
 ### Annotations
 
-Annotations are available through the use of _'string'_ metrics in Hawkular. It's a Grafana feature that allows to display custom events in timed charts. Here's how to proceed:
+Annotations are available through the use of _'string'_ and _'availability'_ metrics in Hawkular, or _'events'_ from Hawkular Alerts. It's a Grafana feature that allows to display custom events in timed charts.
+
+Example with a _'string'_ metric:
 
 1. Setup an annotation query in Grafana. In _'Query'_, put the name of a _'string'_ metric you want to use to gather these annotations.
 
@@ -99,6 +102,8 @@ Example, JSON posted on [the Hawkular's REST API](http://www.hawkular.org/hawkul
 
 ![Annotation in chart](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/annotation.png)
 
+In the case of Hawkular Alerts events, you need to provide the trigger ID (several comma-separated IDs are allowed).
+
 ## Installing from sources
 
 Additional information on installing from sources can be found on [hawkular.org](http://www.hawkular.org/hawkular-clients/grafana/docs/quickstart-guide/).
@@ -107,7 +112,7 @@ Additional information on installing from sources can be found on [hawkular.org]
 
 ### Grafana fails to establish a connection or get data from hawkular
 
-* Check the URL: `[host]/hawkular/metrics`. Make sure there's no ending slash. When you open up this URL in a browser you should see the Hawkular logo, the installed version and a mention that the service is started.
+* Check the URL: `[host]/hawkular`. Make sure there's no ending slash. When you open up this URL in a browser you should see the Hawkular logo, the installed version and a mention that the service is started.
 
 * Make sure the credentials or token match your installation. In general, if you installed a **standalone hawkular-metrics** server without any specific configuration you probably don't have any authentication information to provide. If you installed **hawkular-services** using its [installation guide](http://www.hawkular.org/hawkular-services/docs/installation-guide/) you will probably have to fill-in the basic auth fields. If you are using **Hawkular from OpenShift**, you have to provide a Bearer token in the `Token` field. Tokens can be [generated temporarily](https://docs.openshift.com/enterprise/3.1/architecture/additional_concepts/authentication.html) (go to `[OpenShift host]/oauth/token/request`) or from a [Service account](https://docs.openshift.com/container-platform/3.3/rest_api/index.html#rest-api-serviceaccount-tokens) in OpenShift.
 

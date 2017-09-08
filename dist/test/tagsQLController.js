@@ -75,7 +75,7 @@ var TagsQLController = exports.TagsQLController = function () {
         var i = this.getContainingEnum(segments, $index);
         if (i > 0) {
           var key = segments[i - 1].value;
-          return this.datasource.suggestTags(this.targetSupplier().type, key).then(this.uiSegmentSrv.transformToSegments(false));
+          return this.datasource.suggestTags(this.targetSupplier(), key).then(this.uiSegmentSrv.transformToSegments(false));
         } else {
           return this.getTagKeys();
         }
@@ -90,7 +90,7 @@ var TagsQLController = exports.TagsQLController = function () {
           _i--;
         }
         var _key = segments[_i].value;
-        var promise = this.datasource.suggestTags(this.targetSupplier().type, _key).then(this.uiSegmentSrv.transformToSegments(false));
+        var promise = this.datasource.suggestTags(this.targetSupplier(), _key).then(this.uiSegmentSrv.transformToSegments(false));
         if (segments[$index - 1].type === 'value') {
           // We're in an enumeration
           promise = promise.then(function (values) {
@@ -126,7 +126,7 @@ var TagsQLController = exports.TagsQLController = function () {
   }, {
     key: 'getTagKeys',
     value: function getTagKeys() {
-      return this.datasource.suggestTagKeys().then(this.uiSegmentSrv.transformToSegments(false));
+      return this.datasource.suggestTagKeys(this.targetSupplier()).then(this.uiSegmentSrv.transformToSegments(false));
     }
   }, {
     key: 'tagsSegmentChanged',
@@ -222,9 +222,9 @@ function convertFromKVPairs(kvTags) {
     }
     if (tag.value.charAt(0) === '$') {
       // it's a variable
-      return tag.name + " IN [" + tag.value + "]";
+      return tag.name + ' IN [' + tag.value + ']';
     }
-    return tag.name + "='" + tag.value + "'";
+    return tag.name + '=\'' + tag.value + '\'';
   }).join(' AND ');
 }
 
@@ -232,7 +232,7 @@ function convertFromKVPairs(kvTags) {
 // Input segment values: ["fruit", "is in", "pear", "apple", "peach", "<plus-button>", "AND", "color", "=", "green", "<plus-button>"]
 // Output string: "fruit IN [pear, apple, peach] AND color=green"
 function segmentsToString(segments) {
-  var strTags = "";
+  var strTags = '';
   var i = 0;
   while (i < segments.length) {
     if (segments[i].type === 'plus-button') {
@@ -241,7 +241,7 @@ function segmentsToString(segments) {
     }
     if (i != 0) {
       // AND/OR
-      strTags += " " + segments[i++].value + " ";
+      strTags += ' ' + segments[i++].value + ' ';
     }
     // Tag name
     var tagName = segments[i++].value;
@@ -267,11 +267,11 @@ function segmentsToString(segments) {
 }
 
 function valuesToString(segments, i) {
-  var values = "";
-  var sep = "";
+  var values = '';
+  var sep = '';
   while (i < segments.length && segments[i].type === 'value') {
     values += sep + valueToString(segments[i++].value);
-    sep = ",";
+    sep = ',';
   }
   return {
     values: values,
@@ -280,11 +280,11 @@ function valuesToString(segments, i) {
 }
 
 function valueToString(value) {
-  if (value.charAt(0) === "'" && value.charAt(value.length - 1) === "'" || value.match(/^\$?[a-zA-Z0-9_]+$/g)) {
+  if (value.charAt(0) === "'" && value.charAt(value.length - 1) === "'" || value.match(/^\$?[a-zA-Z0-9_.]+$/g)) {
     // Variable, simple literal or already single-quoted => keep as is
     return value;
   }
-  return "'" + value + "'";
+  return '\'' + value + '\'';
 }
 
 // Example:
@@ -378,7 +378,7 @@ function readLogicalOp(strTags, cursor) {
   if (strTags.substr(cursor, 3).toUpperCase() === 'AND') {
     return { cursor: cursor + 3, value: OPERATOR_AND };
   }
-  throw "Cannot parse tags string: logical operator expected near '" + strTags.substr(cursor, 15) + "'";
+  throw 'Cannot parse tags string: logical operator expected near \'' + strTags.substr(cursor, 15) + '\'';
 }
 
 function readWord(strTags, cursor) {
@@ -393,7 +393,7 @@ function readWord(strTags, cursor) {
     }) + 1;
     return { cursor: cursor, value: strTags.substr(first, cursor - first) };
   }
-  var word = remaining.match(/^(\$?[a-zA-Z0-9_]*)/)[0];
+  var word = remaining.match(/^(\$?[a-zA-Z0-9_.]*)/)[0];
   cursor += word.length;
   return { cursor: cursor, value: word };
 }
@@ -414,7 +414,7 @@ function readRelationalOp(strTags, cursor) {
   if (strTags.substr(cursor, 6).toUpperCase() === 'NOT IN') {
     return { cursor: cursor + 6, value: OPERATOR_NOTIN };
   }
-  throw "Cannot parse tags string: relational operator expected near '" + strTags.substr(cursor, 15) + "'";
+  throw 'Cannot parse tags string: relational operator expected near \'' + strTags.substr(cursor, 15) + '\'';
 }
 
 function readEnumeration(strTags, cursor) {
@@ -435,7 +435,7 @@ function readEnumeration(strTags, cursor) {
     if (strTags.charAt(cursor) === ',') {
       cursor++;
     } else {
-      throw "Cannot parse tags string: unexpected token in enumeration near '" + strTags.substr(cursor, 15) + "'";
+      throw 'Cannot parse tags string: unexpected token in enumeration near \'' + strTags.substr(cursor, 15) + '\'';
     }
   }
   return { cursor: cursor, values: values };

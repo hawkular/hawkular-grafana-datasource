@@ -28,32 +28,48 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     _classCallCheck(this, HawkularDatasource);
 
     this.type = instanceSettings.type;
-    this.url = instanceSettings.url;
+    this.metricsUrl = instanceSettings.url + '/metrics';
+    this.alertsUrl = instanceSettings.url + '/alerts';
     this.name = instanceSettings.name;
+    this.tenant = instanceSettings.jsonData.tenant;
+    this.isTenantPerQuery = instanceSettings.jsonData.isTenantPerQuery;
+    this.authorization = null;
+    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
+      this.authorization = instanceSettings.basicAuth;
+    } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
+      this.authorization = 'Bearer ' + instanceSettings.jsonData.token;
+    }
     this.q = $q;
     this.backendSrv = backendSrv;
-    this.headers = {
-      'Content-Type': 'application/json',
-      'Hawkular-Tenant': instanceSettings.jsonData.tenant
-    };
-    if (typeof instanceSettings.basicAuth === 'string' && instanceSettings.basicAuth.length > 0) {
-      this.headers['Authorization'] = instanceSettings.basicAuth;
-    } else if (typeof instanceSettings.jsonData.token === 'string' && instanceSettings.jsonData.token.length > 0) {
-      this.headers['Authorization'] = 'Bearer ' + instanceSettings.jsonData.token;
-    }
     this.typeResources = {
-      "gauge": "gauges",
-      "counter": "counters",
-      "availability": "availability"
+      'gauge': 'gauges',
+      'counter': 'counters',
+      'availability': 'availability'
     };
     this.variablesHelper = new _variablesHelper.VariablesHelper(templateSrv);
     this.capabilitiesPromise = this.queryVersion().then(function (version) {
       return new _capabilities.Capabilities(version);
     });
-    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.url, this.headers, this.typeResources);
+    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.metricsUrl, this.getHeaders.bind(this), this.typeResources);
   }
 
   _createClass(HawkularDatasource, [{
+    key: 'getHeaders',
+    value: function getHeaders(tenant) {
+      var headers = {
+        'Content-Type': 'application/json'
+      };
+      if (tenant && this.isTenantPerQuery) {
+        headers['Hawkular-Tenant'] = tenant;
+      } else {
+        headers['Hawkular-Tenant'] = this.tenant;
+      }
+      if (this.authorization) {
+        headers['Authorization'] = this.authorization;
+      }
+      return headers;
+    }
+  }, {
     key: 'query',
     value: function query(options) {
       var _this = this;
@@ -106,15 +122,19 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
   }, {
     key: 'testDatasource',
     value: function testDatasource() {
+      // If tenants is unknown at this point (when having per-query tenants)
+      // We do a more basic check to / endpoint, which checks authentication in basic-auth mode but not with token/OpenShift
+      // Else, it's full connectivity with tenant check
+      var endpoint = this.isTenantPerQuery ? '/' : '/metrics';
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/metrics',
+        url: this.metricsUrl + endpoint,
         method: 'GET',
-        headers: this.headers
+        headers: this.getHeaders()
       }).then(function (response) {
         if (response.status === 200 || response.status === 204) {
-          return { status: "success", message: "Data source is working", title: "Success" };
+          return { status: 'success', message: 'Data source is working', title: 'Success' };
         } else {
-          return { status: "error", message: "Connection failed (" + response.status + ")", title: "Error" };
+          return { status: 'error', message: 'Connection failed (' + response.status + ')', title: 'Error' };
         }
       });
     }
@@ -122,8 +142,11 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     key: 'annotationQuery',
     value: function annotationQuery(options) {
       var metricIds = this.variablesHelper.resolve(options.annotation.query, options);
+      if (options.annotation.type === 'alert') {
+        return this.queryAlerts(metricIds, options);
+      }
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/strings/raw/query',
+        url: this.metricsUrl + '/' + options.annotation.type + '/raw/query',
         data: {
           start: options.range.from.valueOf(),
           end: options.range.to.valueOf(),
@@ -131,7 +154,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
           ids: metricIds
         },
         method: 'POST',
-        headers: this.headers
+        headers: this.getHeaders(options.annotation.tenant)
       }).then(function (response) {
         return response.status == 200 ? response.data : [];
       }).then(function (metrics) {
@@ -165,18 +188,44 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       });
     }
   }, {
-    key: 'suggestQueries',
-    value: function suggestQueries(target) {
-      var url = this.url + '/metrics?type=' + target.type;
+    key: 'queryAlerts',
+    value: function queryAlerts(ids, options) {
+      return this.backendSrv.datasourceRequest({
+        url: this.alertsUrl + '/events',
+        params: {
+          startTime: options.range.from.valueOf(),
+          endTime: options.range.to.valueOf(),
+          triggerIds: ids
+        },
+        method: 'GET',
+        headers: this.getHeaders(options.annotation.tenant)
+      }).then(function (response) {
+        return response.status == 200 ? response.data : [];
+      }).then(function (events) {
+        return events.map(function (event) {
+          return {
+            annotation: options.annotation,
+            time: event.ctime,
+            title: options.annotation.name,
+            text: event.text,
+            tags: event.status
+          };
+        });
+      });
+    }
+  }, {
+    key: 'suggestMetrics',
+    value: function suggestMetrics(target) {
+      var url = this.metricsUrl + '/metrics?type=' + target.type;
       if (target.tagsQL && target.tagsQL.length > 0) {
-        url += "&tags=" + this.variablesHelper.resolveForQL(target.tagsQL, {});
+        url += '&tags=' + this.variablesHelper.resolveForQL(target.tagsQL, {});
       } else if (target.tags && target.tags.length > 0) {
-        url += "&tags=" + (0, _tagsKVPairsController.modelToString)(target.tags, this.variablesHelper, {});
+        url += '&tags=' + (0, _tagsKVPairsController.modelToString)(target.tags, this.variablesHelper, {});
       }
       return this.backendSrv.datasourceRequest({
         url: url,
         method: 'GET',
-        headers: this.headers
+        headers: this.getHeaders(target.tenant)
       }).then(function (response) {
         return response.status == 200 ? response.data : [];
       }).then(function (result) {
@@ -189,14 +238,14 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     }
   }, {
     key: 'suggestTags',
-    value: function suggestTags(type, key) {
+    value: function suggestTags(target, key) {
       if (!key) {
         return this.q.when([]);
       }
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/' + this.typeResources[type] + '/tags/' + key + ':*',
+        url: this.metricsUrl + '/' + this.typeResources[target.type] + '/tags/' + key + ':*',
         method: 'GET',
-        headers: this.headers
+        headers: this.getHeaders(target.tenant)
       }).then(function (result) {
         return result.data.hasOwnProperty(key) ? result.data[key] : [];
       }).then(function (tags) {
@@ -207,11 +256,11 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     }
   }, {
     key: 'suggestTagKeys',
-    value: function suggestTagKeys(type) {
+    value: function suggestTagKeys(target) {
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/metrics/tags',
+        url: this.metricsUrl + '/metrics/tags',
         method: 'GET',
-        headers: this.headers
+        headers: this.getHeaders(target.tenant)
       }).then(function (response) {
         return response.status == 200 ? response.data : [];
       }).then(function (result) {
@@ -225,22 +274,22 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     value: function metricFindQuery(query) {
       var _this2 = this;
 
-      var params = "";
+      var params = '';
       if (query !== undefined) {
-        if (query.substr(0, 5) === "tags/") {
+        if (query.substr(0, 5) === 'tags/') {
           return this.findTags(query.substr(5).trim());
         }
         if (query.charAt(0) === '?') {
           params = query;
         } else {
-          params = "?" + query;
+          params = '?' + query;
         }
       }
       return this.runWithResolvedVariables(params, function (p) {
         return _this2.backendSrv.datasourceRequest({
-          url: _this2.url + '/metrics' + p,
+          url: _this2.metricsUrl + '/metrics' + p,
           method: 'GET',
-          headers: _this2.headers
+          headers: _this2.getHeaders()
         }).then(function (result) {
           return _lodash2.default.map(result.data, function (metric) {
             return { text: metric.id, value: metric.id };
@@ -255,9 +304,9 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
 
       return this.runWithResolvedVariables(pattern, function (p) {
         return _this3.backendSrv.datasourceRequest({
-          url: _this3.url + '/metrics/tags/' + p,
+          url: _this3.metricsUrl + '/metrics/tags/' + p,
           method: 'GET',
-          headers: _this3.headers
+          headers: _this3.getHeaders()
         }).then(function (result) {
           var flatTags = [];
           if (result.data) {
@@ -288,13 +337,13 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     key: 'queryVersion',
     value: function queryVersion() {
       return this.backendSrv.datasourceRequest({
-        url: this.url + '/status',
+        url: this.metricsUrl + '/status',
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       }).then(function (response) {
         return response.data['Implementation-Version'];
       }).catch(function (response) {
-        return "Unknown";
+        return 'Unknown';
       });
     }
   }, {

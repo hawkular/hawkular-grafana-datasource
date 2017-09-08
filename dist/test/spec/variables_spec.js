@@ -26,7 +26,7 @@ describe('Variables', function () {
         var result = target;
         if (!fmt) {
           fmt = function fmt(values) {
-            return typeof values == "string" ? values : '{' + values.join(',') + '}';
+            return typeof values == "string" ? values : "{" + values.join(',') + "}";
           };
         }
         ctx.templateSrv.variables.forEach(function (v) {
