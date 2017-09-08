@@ -23,7 +23,6 @@ export class QueryProcessor {
         end: options.range.to.valueOf(),
         order: 'ASC'
       };
-      let multipleMetrics = true;
       if (target.id) {
         const metricIds = this.variablesHelper.resolve(target.id, options);
         if (caps.QUERY_POST_ENDPOINTS) {
