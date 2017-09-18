@@ -5,13 +5,12 @@ const STATS_BUCKETS = 60;
 
 export class QueryProcessor {
 
-  constructor(q, backendSrv, variablesHelper, capabilities, url, getHeaders, typeResources) {
+  constructor(q, multiTenantsQuery, variablesHelper, capabilities, url, typeResources) {
     this.q = q;
-    this.backendSrv = backendSrv;
+    this.multiTenantsQuery = multiTenantsQuery;
     this.variablesHelper = variablesHelper;
     this.capabilities = capabilities;
     this.url = url;
-    this.getHeaders = getHeaders;
     this.typeResources = typeResources;
     this.numericMapping = point => [point.value, point.timestamp];
     this.availMapping = point => [point.value == 'up' ? 1 : 0, point.timestamp];
@@ -81,44 +80,35 @@ export class QueryProcessor {
 
   rawQuery(target, postData, tenants) {
     const url = `${this.url}/${this.typeResources[target.type]}/${target.rate ? 'rate' : 'raw'}/query`;
-    return this.q.all(tenants.map(tenant => {
-      return this.backendSrv.datasourceRequest({
-        url: url,
-        data: postData,
-        method: 'POST',
-        headers: this.getHeaders(tenant)
-      }).then(response => this.processRawResponse(target, response.status == 200 ? response.data : [], this.tenantStr(tenants, tenant)));
-    })).then(arrOfArr => _.flatten(arrOfArr));
+    return this.multiTenantsQuery(tenants, url, null, postData, 'POST')
+      .then(res => this.tenantsPrefixer(res))
+      .then(allSeries => this.processRawResponse(target, allSeries));
   }
 
   rawQueryLegacy(target, range, metricIds, tenants) {
-    return this.q.all(tenants.map(tenant => {
-      return this.q.all(metricIds.map(metric => {
-        const url = `${this.url}/${this.typeResources[target.type]}/${encodeURIComponent(metric).replace('+', '%20')}/data`;
-        return this.backendSrv.datasourceRequest({
-          url: url,
-          params: {
-            start: range.from.valueOf(),
-            end: range.to.valueOf()
-          },
-          method: 'GET',
-          headers: this.getHeaders(tenant)
-        }).then(response => this.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : [], this.tenantStr(tenants, tenant)));
-      }));
-    })).then(arrOfArr => _.flatten(arrOfArr));
+    return this.q.all(metricIds.map(metric => {
+      const url = `${this.url}/${this.typeResources[target.type]}/${encodeURIComponent(metric).replace('+', '%20')}/data`;
+      const params = {
+        start: range.from.valueOf(),
+        end: range.to.valueOf()
+      };
+      return this.multiTenantsQuery(tenants, url, params, null, 'GET')
+        .then(res => this.tenantsPrefixer(res))
+        .then(allSeries => this.processRawResponseLegacy(target, metric, allSeries));
+    }));
   }
 
-  processRawResponse(target, data, tenantStr) {
-    return data.map(timeSerie => {
+  processRawResponse(target, allSeries) {
+    return allSeries.map(timeSerie => {
       return {
         refId: target.refId,
-        target: tenantStr + timeSerie.id,
+        target: timeSerie.prefix + timeSerie.id,
         datapoints: timeSerie.data.map(target.type == 'availability' ? this.availMapping : this.numericMapping)
       };
     });
   }
 
-  processRawResponseLegacy(target, metric, data, tenantStr) {
+  processRawResponseLegacy(target, metric, data) {
     let datapoints;
     if (target.type == 'availability') {
       datapoints = data.map(this.availMapping);
@@ -144,7 +134,7 @@ export class QueryProcessor {
     }
     return {
       refId: target.refId,
-      target: tenantStr + metric,
+      target: metric,
       datapoints: datapoints
     };
   }
@@ -161,35 +151,37 @@ export class QueryProcessor {
     if (percentiles.length > 0) {
       postData.percentiles = percentiles.join(',');
     }
-    return this.q.all(tenants.map(tenant => {
-      return this.backendSrv.datasourceRequest({
-        url: url,
-        data: postData,
-        method: 'POST',
-        headers: this.getHeaders(tenant)
-      }).then(response => this.processStatsResponse(target, response.status == 200 ? response.data : [], this.tenantStr(tenants, tenant)));
-    })).then(arrOfArr => _.flatten(arrOfArr));
+    return this.multiTenantsQuery(tenants, url, null, postData, 'POST')
+      .then(multiTenantsData => this.processStatsResponse(target, multiTenantsData));
   }
 
-  processStatsResponse(target, data, tenantStr) {
-    // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
-    return target.stats.map(stat => {
-      const percentile = this.getPercentileValue(stat);
-      if (percentile) {
-        return {
-          refId: target.refId,
-          target: tenantStr + stat,
-          datapoints: data.filter(bucket => !bucket.empty)
-            .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
-        };
-      } else {
-        return {
-          refId: target.refId,
-          target: tenantStr + stat,
-          datapoints: data.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
-        };
+  processStatsResponse(target, multiTenantsData) {
+    // Response example: [ { tenant: 't1', result: [...] }, { tenant: 't2', result: [...] } ]
+    // Detailed `data[i].result`: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
+    const flatten = [];
+    const prefixer = multiTenantsData.length > 1 ? (tenant) => `[${tenant}] ` : (tenant) => '';
+    multiTenantsData.forEach(tenantData => {
+      if (tenantData.result) {
+        target.stats.forEach(stat => {
+          const percentile = this.getPercentileValue(stat);
+          if (percentile) {
+            flatten.push({
+              refId: target.refId,
+              target: prefixer(tenantData.tenant) + stat,
+              datapoints: tenantData.result.filter(bucket => !bucket.empty)
+                .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
+            });
+          } else {
+            flatten.push({
+              refId: target.refId,
+              target: prefixer(tenantData.tenant) + stat,
+              datapoints: tenantData.result.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
+            });
+          }
+        });
       }
     });
+    return flatten;
   }
 
   statsQueryUnmerged(target, postData, tenants) {
@@ -206,45 +198,46 @@ export class QueryProcessor {
     if (percentiles.length > 0) {
       postData.percentiles = percentiles.join(',');
     }
-    return this.q.all(tenants.map(tenant => {
-      return this.backendSrv.datasourceRequest({
-        url: url,
-        data: postData,
-        method: 'POST',
-        headers: this.getHeaders(tenant)
-      }).then(response => this.processUnmergedStatsResponse(target, response.status == 200 ? response.data : [], this.tenantStr(tenants, tenant)));
-    })).then(arrOfArr => _.flatten(arrOfArr));
+    return this.multiTenantsQuery(tenants, url, null, postData, 'POST')
+      .then(multiTenantsData => this.processUnmergedStatsResponse(target, multiTenantsData));
   }
 
-  processUnmergedStatsResponse(target, data, tenantStr) {
-    // Response example:
+  processUnmergedStatsResponse(target, multiTenantsData) {
+    // Response example: [ { tenant: 't1', result: {...} }, { tenant: 't2', result: {...} } ]
+    // Detailed `data[i].result`:
     // {"gauge": {"my_metric": [
     //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}
     // ]}}
     const series = [];
-    const allMetrics = data[target.type];
-    for (let metricId in allMetrics) {
-      if (allMetrics.hasOwnProperty(metricId)) {
-        const buckets = allMetrics[metricId];
-        target.stats.forEach(stat => {
-          const percentile = this.getPercentileValue(stat);
-          if (percentile) {
-            series.push({
-              refId: target.refId,
-              target: `${tenantStr}${metricId} [${stat}]`,
-              datapoints: buckets.filter(bucket => !bucket.empty)
-                .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
-            });
-          } else {
-            series.push({
-              refId: target.refId,
-              target: `${tenantStr}${metricId} [${stat}]`,
-              datapoints: buckets.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
+    const prefixer = multiTenantsData.length > 1 ? (tenant) => `[${tenant}] ` : (tenant) => '';
+    multiTenantsData.forEach(tenantData => {
+      if (tenantData.result) {
+        const allMetrics = tenantData.result[target.type];
+        const prefix = prefixer(tenantData.tenant);
+        for (let metricId in allMetrics) {
+          if (allMetrics.hasOwnProperty(metricId)) {
+            const buckets = allMetrics[metricId];
+            target.stats.forEach(stat => {
+              const percentile = this.getPercentileValue(stat);
+              if (percentile) {
+                series.push({
+                  refId: target.refId,
+                  target: `${prefix}${metricId} [${stat}]`,
+                  datapoints: buckets.filter(bucket => !bucket.empty)
+                    .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
+                });
+              } else {
+                series.push({
+                  refId: target.refId,
+                  target: `${prefix}${metricId} [${stat}]`,
+                  datapoints: buckets.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
+                });
+              }
             });
           }
-        });
+        }
       }
-    }
+    });
     return series;
   }
 
@@ -282,63 +275,71 @@ export class QueryProcessor {
     delete postData.order;
     postData.buckets = 1;
     postData.stacked = target.seriesAggFn === 'sum';
-    return this.q.all(tenants.map(tenant => {
-      return this.backendSrv.datasourceRequest({
-        url: url,
-        data: postData,
-        method: 'POST',
-        headers: this.getHeaders(tenant)
-      }).then(response => this.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []));
-    })).then(arrOfArr => _.flatten(arrOfArr));
+    return this.multiTenantsQuery(tenants, url, null, postData, 'POST')
+      .then(multiTenantsData => this.processSingleStatResponse(target, fnBucket, multiTenantsData));
   }
 
-  processSingleStatResponse(target, fnBucket, data) {
-    return data.map(bucket => {
-      return {
-        refId: target.refId,
-        target: 'Aggregate',
-        datapoints: [[fnBucket(bucket), bucket.start]]
-      };
-    });
+  processSingleStatResponse(target, fnBucket, multiTenantsData) {
+    return _.flatten(multiTenantsData.map(tenantData => {
+      if (tenantData.result) {
+        return tenantData.result.map(bucket => {
+          return {
+            refId: target.refId,
+            target: 'Aggregate',
+            datapoints: [[fnBucket(bucket), bucket.start]]
+          };
+        });
+      }
+    }));
   }
 
   singleStatLiveQuery(target, postData, tenants) {
     const url = `${this.url}/${this.typeResources[target.type]}/${target.rate ? 'rate' : 'raw'}/query`;
     // Set start to now - 5m
     postData.start = Date.now() - 300000;
-    return this.q.all(tenants.map(tenant => {
-      return this.backendSrv.datasourceRequest({
-        url: url,
-        data: postData,
-        method: 'POST',
-        headers: this.getHeaders(tenants[0])
-      }).then(response => this.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []));
-    })).then(arrOfArr => _.flatten(arrOfArr));
+    return this.multiTenantsQuery(tenants, url, null, postData, 'POST')
+      .then(multiTenantsData => this.processSingleStatLiveResponse(target, multiTenantsData));
   }
 
-  processSingleStatLiveResponse(target, data) {
+  processSingleStatLiveResponse(target, multiTenantsData) {
     let reduceFunc;
     if (target.seriesAggFn === 'sum') {
       reduceFunc = (presentValues => presentValues.reduce((a,b) => a+b));
     } else {
       reduceFunc = (presentValues => presentValues.reduce((a,b) => a+b) / presentValues.length);
     }
-    let datapoints;
-    const latestPoints = data.filter(timeSeries => timeSeries.data.length > 0)
-        .map(timeSeries => timeSeries.data[0]);
-    if (latestPoints.length === 0) {
-      datapoints = [];
-    } else {
-      datapoints = [[reduceFunc(latestPoints.map(dp => dp.value)), latestPoints[0].timestamp]];
-    }
-    return [{
-      refId: target.refId,
-      target: 'Aggregate',
-      datapoints: datapoints
-    }];
+    return _.flatten(multiTenantsData.map(tenantData => {
+      if (tenantData.result) {
+        let datapoints;
+        const latestPoints = tenantData.result.filter(timeSeries => timeSeries.data.length > 0)
+            .map(timeSeries => timeSeries.data[0]);
+        if (latestPoints.length === 0) {
+          datapoints = [];
+        } else {
+          datapoints = [[reduceFunc(latestPoints.map(dp => dp.value)), latestPoints[0].timestamp]];
+        }
+        return [{
+          refId: target.refId,
+          target: 'Aggregate',
+          datapoints: datapoints
+        }];
+      }
+    }));
   }
 
-  tenantStr(tenants, tenant) {
-    return tenants.length > 1 ? `[${tenant}] ` : '';
+  tenantsPrefixer(allTenantTimeSeries) {
+    // Exemple of input:
+    // [ { tenant: 't1', result: [ {id: metricA, data: []} ] }, { tenant: 't2', result: [ {id: metricB, data: []} ] } ]
+    const flatten = [];
+    const prefixer = allTenantTimeSeries.length > 1 ? (tenant) => `[${tenant}] ` : (tenant) => '';
+    allTenantTimeSeries.forEach(oneTenantTimeSeries => {
+      if (oneTenantTimeSeries.result) {
+        oneTenantTimeSeries.result.forEach(timeSeries => {
+          timeSeries.prefix = prefixer(oneTenantTimeSeries.tenant);
+          flatten.push(timeSeries);
+        })
+      }
+    })
+    return flatten;
   }
 }
