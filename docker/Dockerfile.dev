@@ -1,0 +1,25 @@
+FROM centos:7
+
+ENV GRAFANA_VERSION 4.1.2-1486989747
+ENV GF_PATHS_DATA /var/lib/grafana/data
+
+# Install grafana
+RUN yum install -y https://grafanarel.s3.amazonaws.com/builds/grafana-${GRAFANA_VERSION}.x86_64.rpm && \
+    yum install -y unzip && \
+    yum clean all
+
+COPY dist /var/lib/grafana/plugins/hawkular-datasource
+
+# Fix permissions so will run on OCP under "restricted" SCC
+COPY ./run.sh /run.sh
+COPY fix-permissions /usr/bin/fix-permissions
+
+RUN chmod +x /usr/bin/fix-permissions && \
+    /usr/bin/fix-permissions /run.sh && \
+    /usr/bin/fix-permissions /var/lib/grafana && \
+    /usr/bin/fix-permissions /var/log/grafana && \
+    /usr/bin/fix-permissions /etc/grafana
+
+EXPOSE 3000
+
+ENTRYPOINT ["/run.sh"]
