@@ -1,9 +1,9 @@
 'use strict';
 
-System.register(['./tagsKVPairsController'], function (_export, _context) {
+System.register(['lodash', './tagsKVPairsController'], function (_export, _context) {
   "use strict";
 
-  var tagsModelToString, _createClass, STATS_BUCKETS, QueryProcessor;
+  var _, tagsModelToString, _createClass, STATS_BUCKETS, QueryProcessor;
 
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -12,7 +12,9 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
   }
 
   return {
-    setters: [function (_tagsKVPairsController) {
+    setters: [function (_lodash) {
+      _ = _lodash.default;
+    }, function (_tagsKVPairsController) {
       tagsModelToString = _tagsKVPairsController.modelToString;
     }],
     execute: function () {
@@ -37,15 +39,14 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
       STATS_BUCKETS = 60;
 
       _export('QueryProcessor', QueryProcessor = function () {
-        function QueryProcessor(q, backendSrv, variablesHelper, capabilities, url, getHeaders, typeResources) {
+        function QueryProcessor(q, multiTenantsQuery, variablesHelper, capabilities, url, typeResources) {
           _classCallCheck(this, QueryProcessor);
 
           this.q = q;
-          this.backendSrv = backendSrv;
+          this.multiTenantsQuery = multiTenantsQuery;
           this.variablesHelper = variablesHelper;
           this.capabilities = capabilities;
           this.url = url;
-          this.getHeaders = getHeaders;
           this.typeResources = typeResources;
           this.numericMapping = function (point) {
             return [point.value, point.timestamp];
@@ -66,26 +67,30 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
                 end: options.range.to.valueOf(),
                 order: 'ASC'
               };
+              var tenants = [null];
+              if (target.tenant) {
+                tenants = _this.variablesHelper.resolve(target.tenant, options);
+              }
               if (target.id) {
                 var metricIds = _this.variablesHelper.resolve(target.id, options);
                 if (caps.QUERY_POST_ENDPOINTS) {
                   if (target.raw) {
                     postData.ids = metricIds;
-                    return _this.rawQuery(target, postData);
+                    return _this.rawQuery(target, postData, tenants);
                   } else if (target.timeAggFn == 'live') {
                     // Need to change postData
-                    return _this.singleStatLiveQuery(target, { ids: metricIds, limit: 1 });
+                    return _this.singleStatLiveQuery(target, { ids: metricIds, limit: 1 }, tenants);
                   } else if (target.timeAggFn) {
                     // Query single stat
                     postData.metrics = metricIds;
-                    return _this.singleStatQuery(target, postData);
+                    return _this.singleStatQuery(target, postData, tenants);
                   } else {
                     // Query stats for chart
                     postData.metrics = metricIds;
-                    return _this.statsQuery(target, postData);
+                    return _this.statsQuery(target, postData, tenants);
                   }
                 } else {
-                  return _this.rawQueryLegacy(target, options.range, metricIds);
+                  return _this.rawQueryLegacy(target, options.range, metricIds, tenants);
                 }
               } else {
                 if (caps.TAGS_QUERY_LANGUAGE) {
@@ -102,65 +107,59 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
                   }
                 }
                 if (target.raw) {
-                  return _this.rawQuery(target, postData);
+                  return _this.rawQuery(target, postData, tenants);
                 } else if (target.timeAggFn == 'live') {
                   // Need to change postData
-                  return _this.singleStatLiveQuery(target, { tags: postData.tags, limit: 1 });
+                  return _this.singleStatLiveQuery(target, { tags: postData.tags, limit: 1 }, tenants);
                 } else if (target.timeAggFn) {
                   // Query single stat
-                  return _this.singleStatQuery(target, postData);
+                  return _this.singleStatQuery(target, postData, tenants);
                 } else {
                   // Query stats for chart
-                  return _this.statsQuery(target, postData);
+                  return _this.statsQuery(target, postData, tenants);
                 }
               }
             });
           }
         }, {
           key: 'rawQuery',
-          value: function rawQuery(target, postData) {
+          value: function rawQuery(target, postData, tenants) {
             var _this2 = this;
 
             var url = this.url + '/' + this.typeResources[target.type] + '/' + (target.rate ? 'rate' : 'raw') + '/query';
-
-            return this.backendSrv.datasourceRequest({
-              url: url,
-              data: postData,
-              method: 'POST',
-              headers: this.getHeaders(target.tenant)
-            }).then(function (response) {
-              return _this2.processRawResponse(target, response.status == 200 ? response.data : []);
+            return this.multiTenantsQuery(tenants, url, null, postData, 'POST').then(function (res) {
+              return _this2.tenantsPrefixer(res);
+            }).then(function (allSeries) {
+              return _this2.processRawResponse(target, allSeries);
             });
           }
         }, {
           key: 'rawQueryLegacy',
-          value: function rawQueryLegacy(target, range, metricIds) {
+          value: function rawQueryLegacy(target, range, metricIds, tenants) {
             var _this3 = this;
 
             return this.q.all(metricIds.map(function (metric) {
               var url = _this3.url + '/' + _this3.typeResources[target.type] + '/' + encodeURIComponent(metric).replace('+', '%20') + '/data';
-              return _this3.backendSrv.datasourceRequest({
-                url: url,
-                params: {
-                  start: range.from.valueOf(),
-                  end: range.to.valueOf()
-                },
-                method: 'GET',
-                headers: _this3.getHeaders(target.tenant)
-              }).then(function (response) {
-                return _this3.processRawResponseLegacy(target, metric, response.status == 200 ? response.data : []);
+              var params = {
+                start: range.from.valueOf(),
+                end: range.to.valueOf()
+              };
+              return _this3.multiTenantsQuery(tenants, url, params, null, 'GET').then(function (res) {
+                return _this3.tenantsPrefixer(res);
+              }).then(function (allSeries) {
+                return _this3.processRawResponseLegacy(target, metric, allSeries);
               });
             }));
           }
         }, {
           key: 'processRawResponse',
-          value: function processRawResponse(target, data) {
+          value: function processRawResponse(target, allSeries) {
             var _this4 = this;
 
-            return data.map(function (timeSerie) {
+            return allSeries.map(function (timeSerie) {
               return {
                 refId: target.refId,
-                target: timeSerie.id,
+                target: timeSerie.prefix + timeSerie.id,
                 datapoints: timeSerie.data.map(target.type == 'availability' ? _this4.availMapping : _this4.numericMapping)
               };
             });
@@ -198,11 +197,11 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
           }
         }, {
           key: 'statsQuery',
-          value: function statsQuery(target, postData) {
+          value: function statsQuery(target, postData, tenants) {
             var _this5 = this;
 
             if (target.seriesAggFn === 'none') {
-              return this.statsQueryUnmerged(target, postData);
+              return this.statsQueryUnmerged(target, postData, tenants);
             }
             var url = this.url + '/' + this.typeResources[target.type] + '/stats/query';
             delete postData.order;
@@ -212,49 +211,56 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             if (percentiles.length > 0) {
               postData.percentiles = percentiles.join(',');
             }
-            return this.backendSrv.datasourceRequest({
-              url: url,
-              data: postData,
-              method: 'POST',
-              headers: this.getHeaders(target.tenant)
-            }).then(function (response) {
-              return _this5.processStatsResponse(target, response.status == 200 ? response.data : []);
+            return this.multiTenantsQuery(tenants, url, null, postData, 'POST').then(function (multiTenantsData) {
+              return _this5.processStatsResponse(target, multiTenantsData);
             });
           }
         }, {
           key: 'processStatsResponse',
-          value: function processStatsResponse(target, data) {
+          value: function processStatsResponse(target, multiTenantsData) {
             var _this6 = this;
 
-            // Response example: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
-            return target.stats.map(function (stat) {
-              var percentile = _this6.getPercentileValue(stat);
-              if (percentile) {
-                return {
-                  refId: target.refId,
-                  target: stat,
-                  datapoints: data.filter(function (bucket) {
-                    return !bucket.empty;
-                  }).map(function (bucket) {
-                    return [_this6.findQuantileInBucket(percentile, bucket), bucket.start];
-                  })
-                };
-              } else {
-                return {
-                  refId: target.refId,
-                  target: stat,
-                  datapoints: data.filter(function (bucket) {
-                    return !bucket.empty;
-                  }).map(function (bucket) {
-                    return [bucket[stat], bucket.start];
-                  })
-                };
+            // Response example: [ { tenant: 't1', result: [...] }, { tenant: 't2', result: [...] } ]
+            // Detailed `data[i].result`: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
+            var flatten = [];
+            var prefixer = multiTenantsData.length > 1 ? function (tenant) {
+              return '[' + tenant + '] ';
+            } : function (tenant) {
+              return '';
+            };
+            multiTenantsData.forEach(function (tenantData) {
+              if (tenantData.result) {
+                target.stats.forEach(function (stat) {
+                  var percentile = _this6.getPercentileValue(stat);
+                  if (percentile) {
+                    flatten.push({
+                      refId: target.refId,
+                      target: prefixer(tenantData.tenant) + stat,
+                      datapoints: tenantData.result.filter(function (bucket) {
+                        return !bucket.empty;
+                      }).map(function (bucket) {
+                        return [_this6.findQuantileInBucket(percentile, bucket), bucket.start];
+                      })
+                    });
+                  } else {
+                    flatten.push({
+                      refId: target.refId,
+                      target: prefixer(tenantData.tenant) + stat,
+                      datapoints: tenantData.result.filter(function (bucket) {
+                        return !bucket.empty;
+                      }).map(function (bucket) {
+                        return [bucket[stat], bucket.start];
+                      })
+                    });
+                  }
+                });
               }
             });
+            return flatten;
           }
         }, {
           key: 'statsQueryUnmerged',
-          value: function statsQueryUnmerged(target, postData) {
+          value: function statsQueryUnmerged(target, postData, tenants) {
             var _this7 = this;
 
             var url = this.url + '/metrics/stats/query';
@@ -270,60 +276,68 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             if (percentiles.length > 0) {
               postData.percentiles = percentiles.join(',');
             }
-            return this.backendSrv.datasourceRequest({
-              url: url,
-              data: postData,
-              method: 'POST',
-              headers: this.getHeaders(target.tenant)
-            }).then(function (response) {
-              return _this7.processUnmergedStatsResponse(target, response.status == 200 ? response.data : []);
+            return this.multiTenantsQuery(tenants, url, null, postData, 'POST').then(function (multiTenantsData) {
+              return _this7.processUnmergedStatsResponse(target, multiTenantsData);
             });
           }
         }, {
           key: 'processUnmergedStatsResponse',
-          value: function processUnmergedStatsResponse(target, data) {
+          value: function processUnmergedStatsResponse(target, multiTenantsData) {
             var _this8 = this;
 
-            // Response example:
+            // Response example: [ { tenant: 't1', result: {...} }, { tenant: 't2', result: {...} } ]
+            // Detailed `data[i].result`:
             // {"gauge": {"my_metric": [
             //    {start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}
             // ]}}
             var series = [];
-            var allMetrics = data[target.type];
-
-            var _loop = function _loop(metricId) {
-              if (allMetrics.hasOwnProperty(metricId)) {
-                var buckets = allMetrics[metricId];
-                target.stats.forEach(function (stat) {
-                  var percentile = _this8.getPercentileValue(stat);
-                  if (percentile) {
-                    series.push({
-                      refId: target.refId,
-                      target: metricId + ' [' + stat + ']',
-                      datapoints: buckets.filter(function (bucket) {
-                        return !bucket.empty;
-                      }).map(function (bucket) {
-                        return [_this8.findQuantileInBucket(percentile, bucket), bucket.start];
-                      })
-                    });
-                  } else {
-                    series.push({
-                      refId: target.refId,
-                      target: metricId + ' [' + stat + ']',
-                      datapoints: buckets.filter(function (bucket) {
-                        return !bucket.empty;
-                      }).map(function (bucket) {
-                        return [bucket[stat], bucket.start];
-                      })
-                    });
-                  }
-                });
-              }
+            var prefixer = multiTenantsData.length > 1 ? function (tenant) {
+              return '[' + tenant + '] ';
+            } : function (tenant) {
+              return '';
             };
+            multiTenantsData.forEach(function (tenantData) {
+              if (tenantData.result) {
+                (function () {
+                  var allMetrics = tenantData.result[target.type];
+                  var prefix = prefixer(tenantData.tenant);
 
-            for (var metricId in allMetrics) {
-              _loop(metricId);
-            }
+                  var _loop = function _loop(metricId) {
+                    if (allMetrics.hasOwnProperty(metricId)) {
+                      var buckets = allMetrics[metricId];
+                      target.stats.forEach(function (stat) {
+                        var percentile = _this8.getPercentileValue(stat);
+                        if (percentile) {
+                          series.push({
+                            refId: target.refId,
+                            target: '' + prefix + metricId + ' [' + stat + ']',
+                            datapoints: buckets.filter(function (bucket) {
+                              return !bucket.empty;
+                            }).map(function (bucket) {
+                              return [_this8.findQuantileInBucket(percentile, bucket), bucket.start];
+                            })
+                          });
+                        } else {
+                          series.push({
+                            refId: target.refId,
+                            target: '' + prefix + metricId + ' [' + stat + ']',
+                            datapoints: buckets.filter(function (bucket) {
+                              return !bucket.empty;
+                            }).map(function (bucket) {
+                              return [bucket[stat], bucket.start];
+                            })
+                          });
+                        }
+                      });
+                    }
+                  };
+
+                  for (var metricId in allMetrics) {
+                    _loop(metricId);
+                  }
+                })();
+              }
+            });
             return series;
           }
         }, {
@@ -354,7 +368,7 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
           }
         }, {
           key: 'singleStatQuery',
-          value: function singleStatQuery(target, postData) {
+          value: function singleStatQuery(target, postData, tenants) {
             var _this9 = this;
 
             // Query for singlestat => we just ask for a single bucket
@@ -377,46 +391,40 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
             delete postData.order;
             postData.buckets = 1;
             postData.stacked = target.seriesAggFn === 'sum';
-            return this.backendSrv.datasourceRequest({
-              url: url,
-              data: postData,
-              method: 'POST',
-              headers: this.getHeaders(target.tenant)
-            }).then(function (response) {
-              return _this9.processSingleStatResponse(target, fnBucket, response.status == 200 ? response.data : []);
+            return this.multiTenantsQuery(tenants, url, null, postData, 'POST').then(function (multiTenantsData) {
+              return _this9.processSingleStatResponse(target, fnBucket, multiTenantsData);
             });
           }
         }, {
           key: 'processSingleStatResponse',
-          value: function processSingleStatResponse(target, fnBucket, data) {
-            return data.map(function (bucket) {
-              return {
-                refId: target.refId,
-                target: 'Aggregate',
-                datapoints: [[fnBucket(bucket), bucket.start]]
-              };
-            });
+          value: function processSingleStatResponse(target, fnBucket, multiTenantsData) {
+            return _.flatten(multiTenantsData.map(function (tenantData) {
+              if (tenantData.result) {
+                return tenantData.result.map(function (bucket) {
+                  return {
+                    refId: target.refId,
+                    target: 'Aggregate',
+                    datapoints: [[fnBucket(bucket), bucket.start]]
+                  };
+                });
+              }
+            }));
           }
         }, {
           key: 'singleStatLiveQuery',
-          value: function singleStatLiveQuery(target, postData) {
+          value: function singleStatLiveQuery(target, postData, tenants) {
             var _this10 = this;
 
             var url = this.url + '/' + this.typeResources[target.type] + '/' + (target.rate ? 'rate' : 'raw') + '/query';
             // Set start to now - 5m
             postData.start = Date.now() - 300000;
-            return this.backendSrv.datasourceRequest({
-              url: url,
-              data: postData,
-              method: 'POST',
-              headers: this.getHeaders(target.tenant)
-            }).then(function (response) {
-              return _this10.processSingleStatLiveResponse(target, response.status == 200 ? response.data : []);
+            return this.multiTenantsQuery(tenants, url, null, postData, 'POST').then(function (multiTenantsData) {
+              return _this10.processSingleStatLiveResponse(target, multiTenantsData);
             });
           }
         }, {
           key: 'processSingleStatLiveResponse',
-          value: function processSingleStatLiveResponse(target, data) {
+          value: function processSingleStatLiveResponse(target, multiTenantsData) {
             var reduceFunc = void 0;
             if (target.seriesAggFn === 'sum') {
               reduceFunc = function reduceFunc(presentValues) {
@@ -431,24 +439,49 @@ System.register(['./tagsKVPairsController'], function (_export, _context) {
                 }) / presentValues.length;
               };
             }
-            var datapoints = void 0;
-            var latestPoints = data.filter(function (timeSeries) {
-              return timeSeries.data.length > 0;
-            }).map(function (timeSeries) {
-              return timeSeries.data[0];
+            return _.flatten(multiTenantsData.map(function (tenantData) {
+              if (tenantData.result) {
+                var datapoints = void 0;
+                var latestPoints = tenantData.result.filter(function (timeSeries) {
+                  return timeSeries.data.length > 0;
+                }).map(function (timeSeries) {
+                  return timeSeries.data[0];
+                });
+                if (latestPoints.length === 0) {
+                  datapoints = [];
+                } else {
+                  datapoints = [[reduceFunc(latestPoints.map(function (dp) {
+                    return dp.value;
+                  })), latestPoints[0].timestamp]];
+                }
+                return [{
+                  refId: target.refId,
+                  target: 'Aggregate',
+                  datapoints: datapoints
+                }];
+              }
+            }));
+          }
+        }, {
+          key: 'tenantsPrefixer',
+          value: function tenantsPrefixer(allTenantTimeSeries) {
+            // Exemple of input:
+            // [ { tenant: 't1', result: [ {id: metricA, data: []} ] }, { tenant: 't2', result: [ {id: metricB, data: []} ] } ]
+            var flatten = [];
+            var prefixer = allTenantTimeSeries.length > 1 ? function (tenant) {
+              return '[' + tenant + '] ';
+            } : function (tenant) {
+              return '';
+            };
+            allTenantTimeSeries.forEach(function (oneTenantTimeSeries) {
+              if (oneTenantTimeSeries.result) {
+                oneTenantTimeSeries.result.forEach(function (timeSeries) {
+                  timeSeries.prefix = prefixer(oneTenantTimeSeries.tenant);
+                  flatten.push(timeSeries);
+                });
+              }
             });
-            if (latestPoints.length === 0) {
-              datapoints = [];
-            } else {
-              datapoints = [[reduceFunc(latestPoints.map(function (dp) {
-                return dp.value;
-              })), latestPoints[0].timestamp]];
-            }
-            return [{
-              refId: target.refId,
-              target: 'Aggregate',
-              datapoints: datapoints
-            }];
+            return flatten;
           }
         }]);
 

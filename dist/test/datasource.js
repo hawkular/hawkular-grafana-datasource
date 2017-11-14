@@ -50,7 +50,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
     this.capabilitiesPromise = this.queryVersion().then(function (version) {
       return new _capabilities.Capabilities(version);
     });
-    this.queryProcessor = new _queryProcessor.QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.metricsUrl, this.getHeaders.bind(this), this.typeResources);
+    this.queryProcessor = new _queryProcessor.QueryProcessor($q, this.multiTenantsQuery.bind(this), this.variablesHelper, this.capabilitiesPromise, this.metricsUrl, this.typeResources);
   }
 
   _createClass(HawkularDatasource, [{
@@ -70,9 +70,29 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       return headers;
     }
   }, {
+    key: 'multiTenantsQuery',
+    value: function multiTenantsQuery(tenants, url, params, data, method) {
+      var _this = this;
+
+      return this.q.all(tenants.map(function (tenant) {
+        return _this.backendSrv.datasourceRequest({
+          url: url,
+          params: params,
+          data: data,
+          method: method,
+          headers: _this.getHeaders(tenant)
+        }).then(function (response) {
+          return {
+            tenant: tenant,
+            result: response.status == 200 ? response.data : null
+          };
+        });
+      }));
+    }
+  }, {
     key: 'query',
     value: function query(options) {
-      var _this = this;
+      var _this2 = this;
 
       var validTargets = options.targets.filter(function (target) {
         return !target.hide;
@@ -85,7 +105,7 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       }
 
       var promises = validTargets.map(function (target) {
-        return _this.queryProcessor.run(target, options);
+        return _this2.queryProcessor.run(target, options);
       });
 
       return this.q.all(promises).then(function (responses) {
@@ -214,6 +234,14 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       });
     }
   }, {
+    key: 'getTargetTenants',
+    value: function getTargetTenants(target) {
+      if (target.tenant) {
+        return this.variablesHelper.resolve(target.tenant, {});
+      }
+      return [null];
+    }
+  }, {
     key: 'suggestMetrics',
     value: function suggestMetrics(target) {
       var url = this.metricsUrl + '/metrics?type=' + target.type;
@@ -222,16 +250,18 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       } else if (target.tags && target.tags.length > 0) {
         url += '&tags=' + (0, _tagsKVPairsController.modelToString)(target.tags, this.variablesHelper, {});
       }
-      return this.backendSrv.datasourceRequest({
-        url: url,
-        method: 'GET',
-        headers: this.getHeaders(target.tenant)
-      }).then(function (response) {
-        return response.status == 200 ? response.data : [];
-      }).then(function (result) {
-        return result.map(function (m) {
-          return m.id;
-        }).sort().map(function (id) {
+      var tenants = this.getTargetTenants(target);
+      return this.multiTenantsQuery(tenants, url, null, null, 'GET').then(function (multiTenantsData) {
+        // Eliminate possible duplicates from multi-tenancy
+        var ids = {};
+        multiTenantsData.forEach(function (tenantData) {
+          if (tenantData.result) {
+            tenantData.result.forEach(function (metric) {
+              ids[metric.id] = true;
+            });
+          }
+        });
+        return Object.keys(ids).sort().map(function (id) {
           return { text: id, value: id };
         });
       });
@@ -242,14 +272,21 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
       if (!key) {
         return this.q.when([]);
       }
-      return this.backendSrv.datasourceRequest({
-        url: this.metricsUrl + '/' + this.typeResources[target.type] + '/tags/' + key + ':*',
-        method: 'GET',
-        headers: this.getHeaders(target.tenant)
-      }).then(function (result) {
-        return result.data.hasOwnProperty(key) ? result.data[key] : [];
-      }).then(function (tags) {
-        return tags.map(function (tag) {
+      var tenants = this.getTargetTenants(target);
+      var url = this.metricsUrl + '/' + this.typeResources[target.type] + '/tags/' + key + ':*';
+      return this.multiTenantsQuery(tenants, url, null, null, 'GET').then(function (multiTenantsData) {
+        // Eliminate possible duplicates from multi-tenancy
+        var mergedTags = {};
+        multiTenantsData.forEach(function (tenantData) {
+          if (tenantData.result) {
+            if (tenantData.result.hasOwnProperty(key)) {
+              tenantData.result[key].forEach(function (tag) {
+                mergedTags[tag] = true;
+              });
+            }
+          }
+        });
+        return Object.keys(mergedTags).sort().map(function (tag) {
           return { text: tag, value: tag };
         });
       });
@@ -257,22 +294,26 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
   }, {
     key: 'suggestTagKeys',
     value: function suggestTagKeys(target) {
-      return this.backendSrv.datasourceRequest({
-        url: this.metricsUrl + '/metrics/tags',
-        method: 'GET',
-        headers: this.getHeaders(target.tenant)
-      }).then(function (response) {
-        return response.status == 200 ? response.data : [];
-      }).then(function (result) {
-        return result.map(function (key) {
-          return { text: key, value: key };
+      var tenants = this.getTargetTenants(target);
+      return this.multiTenantsQuery(tenants, this.metricsUrl + '/metrics/tags', null, null, 'GET').then(function (multiTenantsData) {
+        // Eliminate possible duplicates from multi-tenancy
+        var mergedTags = {};
+        multiTenantsData.forEach(function (tenantData) {
+          if (tenantData.result) {
+            tenantData.result.forEach(function (tag) {
+              mergedTags[tag] = true;
+            });
+          }
+        });
+        return Object.keys(mergedTags).map(function (tag) {
+          return { text: tag, value: tag };
         });
       });
     }
   }, {
     key: 'metricFindQuery',
     value: function metricFindQuery(query) {
-      var _this2 = this;
+      var _this3 = this;
 
       var params = '';
       if (query !== undefined) {
@@ -286,10 +327,10 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
         }
       }
       return this.runWithResolvedVariables(params, function (p) {
-        return _this2.backendSrv.datasourceRequest({
-          url: _this2.metricsUrl + '/metrics' + p,
+        return _this3.backendSrv.datasourceRequest({
+          url: _this3.metricsUrl + '/metrics' + p,
           method: 'GET',
-          headers: _this2.getHeaders()
+          headers: _this3.getHeaders()
         }).then(function (result) {
           return _lodash2.default.map(result.data, function (metric) {
             return { text: metric.id, value: metric.id };
@@ -300,13 +341,13 @@ var HawkularDatasource = exports.HawkularDatasource = function () {
   }, {
     key: 'findTags',
     value: function findTags(pattern) {
-      var _this3 = this;
+      var _this4 = this;
 
       return this.runWithResolvedVariables(pattern, function (p) {
-        return _this3.backendSrv.datasourceRequest({
-          url: _this3.metricsUrl + '/metrics/tags/' + p,
+        return _this4.backendSrv.datasourceRequest({
+          url: _this4.metricsUrl + '/metrics/tags/' + p,
           method: 'GET',
-          headers: _this3.getHeaders()
+          headers: _this4.getHeaders()
         }).then(function (result) {
           var flatTags = [];
           if (result.data) {
