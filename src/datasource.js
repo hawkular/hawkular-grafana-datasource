@@ -28,8 +28,8 @@ export class HawkularDatasource {
     };
     this.variablesHelper = new VariablesHelper(templateSrv);
     this.capabilitiesPromise = this.queryVersion().then(version => new Capabilities(version));
-    this.queryProcessor = new QueryProcessor($q, backendSrv, this.variablesHelper, this.capabilitiesPromise, this.metricsUrl,
-            this.getHeaders.bind(this), this.typeResources);
+    this.queryProcessor = new QueryProcessor($q, this.multiTenantsQuery.bind(this), this.variablesHelper, this.capabilitiesPromise, this.metricsUrl,
+            this.typeResources);
   }
 
   getHeaders(tenant) {
@@ -45,6 +45,23 @@ export class HawkularDatasource {
       headers['Authorization'] = this.authorization;
     }
     return headers;
+  }
+
+  multiTenantsQuery(tenants, url, params, data, method) {
+    return this.q.all(tenants.map(tenant => {
+      return this.backendSrv.datasourceRequest({
+        url: url,
+        params: params,
+        data: data,
+        method: method,
+        headers: this.getHeaders(tenant)
+      }).then(response => {
+        return {
+          tenant: tenant,
+          result: (response.status == 200) ? response.data : null
+        }
+      });
+    }));
   }
 
   query(options) {
@@ -178,6 +195,13 @@ export class HawkularDatasource {
     });
   }
 
+  getTargetTenants(target) {
+    if (target.tenant) {
+      return this.variablesHelper.resolve(target.tenant, {});
+    }
+    return [null];
+  }
+
   suggestMetrics(target) {
     let url = this.metricsUrl + '/metrics?type=' + target.type;
     if (target.tagsQL && target.tagsQL.length > 0) {
@@ -185,41 +209,71 @@ export class HawkularDatasource {
     } else if (target.tags && target.tags.length > 0) {
       url += '&tags=' + tagsModelToString(target.tags, this.variablesHelper, {});
     }
-    return this.backendSrv.datasourceRequest({
-      url: url,
-      method: 'GET',
-      headers: this.getHeaders(target.tenant)
-    }).then(response => response.status == 200 ? response.data : [])
-    .then(result => {
-      return result.map(m => m.id)
-        .sort()
-        .map(id => {
-          return {text: id, value: id};
+    const tenants = this.getTargetTenants(target);
+    return this.multiTenantsQuery(tenants, url, null, null, 'GET')
+      .then(multiTenantsData => {
+        // Eliminate possible duplicates from multi-tenancy
+        let ids = {};
+        multiTenantsData.forEach(tenantData => {
+          if (tenantData.result) {
+            tenantData.result.forEach(metric => {
+              ids[metric.id] = true;
+            });
+          }
         });
-    });
+        return Object.keys(ids)
+          .sort()
+          .map(id => {
+            return {text: id, value: id};
+          });
+      });
   }
 
   suggestTags(target, key) {
     if (!key) {
       return this.q.when([]);
     }
-    return this.backendSrv.datasourceRequest({
-      url: `${this.metricsUrl}/${this.typeResources[target.type]}/tags/${key}:*`,
-      method: 'GET',
-      headers: this.getHeaders(target.tenant)
-    }).then(result => result.data.hasOwnProperty(key) ? result.data[key] : [])
-    .then(tags => tags.map(tag => {
-      return {text: tag, value: tag};
-    }));
+    const tenants = this.getTargetTenants(target);
+    const url = `${this.metricsUrl}/${this.typeResources[target.type]}/tags/${key}:*`;
+    return this.multiTenantsQuery(tenants, url, null, null, 'GET')
+      .then(multiTenantsData => {
+        // Eliminate possible duplicates from multi-tenancy
+        let mergedTags = {};
+        multiTenantsData.forEach(tenantData => {
+          if (tenantData.result) {
+            if (tenantData.result.hasOwnProperty(key)) {
+              tenantData.result[key].forEach(tag => {
+                mergedTags[tag] = true;
+              });
+            }
+          }
+        });
+        return Object.keys(mergedTags)
+          .sort()
+          .map(tag => {
+            return {text: tag, value: tag};
+          });
+      });
   }
 
   suggestTagKeys(target) {
-    return this.backendSrv.datasourceRequest({
-      url: this.metricsUrl + '/metrics/tags',
-      method: 'GET',
-      headers: this.getHeaders(target.tenant)
-    }).then(response => response.status == 200 ? response.data : [])
-    .then(result => result.map(key => ({text: key, value: key})));
+    const tenants = this.getTargetTenants(target);
+    return this.multiTenantsQuery(tenants, this.metricsUrl + '/metrics/tags', null, null, 'GET')
+      .then(multiTenantsData => {
+        // Eliminate possible duplicates from multi-tenancy
+        let mergedTags = {};
+        multiTenantsData.forEach(tenantData => {
+          if (tenantData.result) {
+            tenantData.result.forEach(tag => {
+              mergedTags[tag] = true;
+            });
+          }
+        });
+        return Object.keys(mergedTags)
+          .map(tag => {
+            return {text: tag, value: tag};
+          });
+      });
   }
 
   metricFindQuery(query) {
