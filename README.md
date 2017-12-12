@@ -106,14 +106,14 @@ In the case of Hawkular Alerts events, you need to provide the trigger ID (sever
 
 ### Legend
 
-Metric names can be customized in chart legend. The `Legend` field can receive regular expressions in that purpose. Regex must be written between double curly braces, and include a parentheses group to design what must be written: `{{(.*)}}`
+Metric names can be customized in chart legend. The `Legend` field can receive regular expressions in that purpose. Regex must be written between double curly braces, and include a parentheses group to point to what must be written: `{{(.*)}}`
 
 _Example:_
 >  From metric name `pod/c6e2a9ab-8d1c-11e7-b7be-06415eb17bbf/custom/haproxy_server_bytes_in_total{namespace=my-namespace,pod=web-45-6f464,route=web,server=10.1.10.138:8080,service=web}`
 >
->  Legend: `HAProxy Server Bytes {{namespace=([^,}]+)}} / {{pod=([^,}]+)}}`
+>  Legend: `HAProxy Server Bytes In {{namespace=([^,}]+)}} / {{pod=([^,}]+)}}`
 >
->  Result: `HAProxy Server Bytes my-namespace / web-45-6f464`
+>  Result: `HAProxy Server Bytes In my-namespace / web-45-6f464`
 
 ## Installing from sources
 
