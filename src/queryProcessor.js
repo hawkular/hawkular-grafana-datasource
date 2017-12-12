@@ -14,6 +14,7 @@ export class QueryProcessor {
     this.typeResources = typeResources;
     this.numericMapping = point => [point.value, point.timestamp];
     this.availMapping = point => [point.value == 'up' ? 1 : 0, point.timestamp];
+    this.legendRegexp = /{{(.+?)(?=}})}}/g;
   }
 
   run(target, options) {
@@ -102,10 +103,27 @@ export class QueryProcessor {
     return allSeries.map(timeSerie => {
       return {
         refId: target.refId,
-        target: timeSerie.prefix + timeSerie.id,
+        target: this.legend(target, timeSerie.prefix + timeSerie.id),
         datapoints: timeSerie.data.map(target.type == 'availability' ? this.availMapping : this.numericMapping)
       };
     });
+  }
+
+  legend(target, name) {
+    if (target.legend) {
+      let legend = target.legend.replace(this.legendRegexp, function(str, group) {
+        try {
+          let match = new RegExp(group).exec(name);
+          if (match && match.length > 1) {
+            return match[1];
+          }
+        } catch(e) {
+        }
+        return str;
+      });
+      return legend;
+    }
+    return name;
   }
 
   processRawResponseLegacy(target, metric, data) {
