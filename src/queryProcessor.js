@@ -177,7 +177,7 @@ export class QueryProcessor {
     // Response example: [ { tenant: 't1', result: [...] }, { tenant: 't2', result: [...] } ]
     // Detailed `data[i].result`: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
     const flatten = [];
-    const prefixer = multiTenantsData.length > 1 ? (tenant) => `[${tenant}] ` : (tenant) => '';
+    const prefixer = multiTenantsData.length > 1 ? (tenant) => `[${target.refId}: ${tenant}] ` : (tenant) => `[${target.refId}] `;
     multiTenantsData.forEach(tenantData => {
       if (tenantData.result) {
         target.stats.forEach(stat => {
@@ -185,14 +185,14 @@ export class QueryProcessor {
           if (percentile) {
             flatten.push({
               refId: target.refId,
-              target: prefixer(tenantData.tenant) + stat,
+              target: this.legend(target, prefixer(tenantData.tenant) + stat),
               datapoints: tenantData.result.filter(bucket => !bucket.empty)
                 .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
             });
           } else {
             flatten.push({
               refId: target.refId,
-              target: prefixer(tenantData.tenant) + stat,
+              target: this.legend(target, prefixer(tenantData.tenant) + stat),
               datapoints: tenantData.result.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
             });
           }
@@ -240,14 +240,14 @@ export class QueryProcessor {
               if (percentile) {
                 series.push({
                   refId: target.refId,
-                  target: `${prefix}${metricId} [${stat}]`,
+                  target: this.legend(target, `${prefix}${metricId} [${stat}]`),
                   datapoints: buckets.filter(bucket => !bucket.empty)
                     .map(bucket => [this.findQuantileInBucket(percentile, bucket), bucket.start])
                 });
               } else {
                 series.push({
                   refId: target.refId,
-                  target: `${prefix}${metricId} [${stat}]`,
+                  target: this.legend(target, `${prefix}${metricId} [${stat}]`),
                   datapoints: buckets.filter(bucket => !bucket.empty).map(bucket => [bucket[stat], bucket.start])
                 });
               }
