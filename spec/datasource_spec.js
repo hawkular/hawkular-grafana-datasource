@@ -316,4 +316,23 @@ describe('HawkularDatasource', () => {
       expect(result[1]).to.deep.equal({ text: 'app', value: 'app' });
     }).then(v => done(), err => done(err));
   });
+
+  it('should get name without legend', done => {
+    let legend = ctx.ds.queryProcessor.legend({}, "my-metric");
+    expect(legend).to.equal('my-metric');
+    done();
+  });
+
+  it('should get simple legend', done => {
+    let legend = ctx.ds.queryProcessor.legend({legend: "my-legend"}, "my-metric");
+    expect(legend).to.equal('my-legend');
+    done();
+  });
+
+  it('should resolve regex in legend', done => {
+    let legend = ctx.ds.queryProcessor.legend({legend: "my-legend {{a}} {{foo=([^,}]+)}} {{foo2=([^,}]+)}}"},
+      "my-metric{foo=bar,foo2=bar2}");
+    expect(legend).to.equal('my-legend {{a}} bar bar2');
+    done();
+  });
 });
