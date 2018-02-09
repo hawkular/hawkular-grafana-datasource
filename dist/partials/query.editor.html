@@ -78,4 +78,13 @@
 			</div>
 		</div>
 	</div>
+	<!-- chart panel -->
+	<div ng-if="ctrl.panel.type !== 'singlestat'">
+		<div class="gf-form-inline">
+			<div class="gf-form">
+				<label class="gf-form-label query-keyword fix-query-keyword">Legend</label>
+				<input type="text" class="gf-form-input" ng-model="ctrl.target.legend" ng-change="ctrl.onChangeInternal()" placeholder="default">
+			</div>
+		</div>
+	</div>
 </query-editor-row>

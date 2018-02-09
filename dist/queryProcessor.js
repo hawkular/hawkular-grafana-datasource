@@ -54,6 +54,7 @@ System.register(['lodash', './tagsKVPairsController'], function (_export, _conte
           this.availMapping = function (point) {
             return [point.value == 'up' ? 1 : 0, point.timestamp];
           };
+          this.legendRegexp = /{{(.+?)(?=}})}}/g;
         }
 
         _createClass(QueryProcessor, [{
@@ -159,10 +160,27 @@ System.register(['lodash', './tagsKVPairsController'], function (_export, _conte
             return allSeries.map(function (timeSerie) {
               return {
                 refId: target.refId,
-                target: timeSerie.prefix + timeSerie.id,
+                target: _this4.legend(target, timeSerie.prefix + timeSerie.id),
                 datapoints: timeSerie.data.map(target.type == 'availability' ? _this4.availMapping : _this4.numericMapping)
               };
             });
+          }
+        }, {
+          key: 'legend',
+          value: function legend(target, name) {
+            if (target.legend) {
+              var legend = target.legend.replace(this.legendRegexp, function (str, group) {
+                try {
+                  var match = new RegExp(group).exec(name);
+                  if (match && match.length > 1) {
+                    return match[1];
+                  }
+                } catch (e) {}
+                return str;
+              });
+              return legend;
+            }
+            return name;
           }
         }, {
           key: 'processRawResponseLegacy',
@@ -224,9 +242,9 @@ System.register(['lodash', './tagsKVPairsController'], function (_export, _conte
             // Detailed `data[i].result`: [{start:1234, end:5678, avg:100.0, min:90.0, max:110.0, (...), percentiles:[{quantile: 90, value: 105.0}]}]
             var flatten = [];
             var prefixer = multiTenantsData.length > 1 ? function (tenant) {
-              return '[' + tenant + '] ';
+              return '[' + target.refId + ': ' + tenant + '] ';
             } : function (tenant) {
-              return '';
+              return '[' + target.refId + '] ';
             };
             multiTenantsData.forEach(function (tenantData) {
               if (tenantData.result) {
@@ -235,7 +253,7 @@ System.register(['lodash', './tagsKVPairsController'], function (_export, _conte
                   if (percentile) {
                     flatten.push({
                       refId: target.refId,
-                      target: prefixer(tenantData.tenant) + stat,
+                      target: _this6.legend(target, prefixer(tenantData.tenant) + stat),
                       datapoints: tenantData.result.filter(function (bucket) {
                         return !bucket.empty;
                       }).map(function (bucket) {
@@ -245,7 +263,7 @@ System.register(['lodash', './tagsKVPairsController'], function (_export, _conte
                   } else {
                     flatten.push({
                       refId: target.refId,
-                      target: prefixer(tenantData.tenant) + stat,
+                      target: _this6.legend(target, prefixer(tenantData.tenant) + stat),
                       datapoints: tenantData.result.filter(function (bucket) {
                         return !bucket.empty;
                       }).map(function (bucket) {
@@ -310,7 +328,7 @@ System.register(['lodash', './tagsKVPairsController'], function (_export, _conte
                         if (percentile) {
                           series.push({
                             refId: target.refId,
-                            target: '' + prefix + metricId + ' [' + stat + ']',
+                            target: _this8.legend(target, '' + prefix + metricId + ' [' + stat + ']'),
                             datapoints: buckets.filter(function (bucket) {
                               return !bucket.empty;
                             }).map(function (bucket) {
@@ -320,7 +338,7 @@ System.register(['lodash', './tagsKVPairsController'], function (_export, _conte
                         } else {
                           series.push({
                             refId: target.refId,
-                            target: '' + prefix + metricId + ' [' + stat + ']',
+                            target: _this8.legend(target, '' + prefix + metricId + ' [' + stat + ']'),
                             datapoints: buckets.filter(function (bucket) {
                               return !bucket.empty;
                             }).map(function (bucket) {

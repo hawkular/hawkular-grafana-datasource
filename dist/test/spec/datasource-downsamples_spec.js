@@ -229,6 +229,7 @@ describe('HawkularDatasource for downsamples', function () {
         to: 30
       },
       targets: [{
+        refId: 'A',
         seriesAggFn: 'sum',
         stats: ['avg', '90 %ile'],
         tags: [{ name: 'type', value: 'memory' }],
@@ -271,9 +272,9 @@ describe('HawkularDatasource for downsamples', function () {
 
     ctx.ds.query(options).then(function (result) {
       expect(result.data).to.have.length(2);
-      expect(result.data[1].target).to.equal('avg');
+      expect(result.data[1].target).to.equal('[A] avg');
       expect(result.data[1].datapoints).to.deep.equal([[20.25, 20], [23.25, 25]]);
-      expect(result.data[0].target).to.equal('90 %ile');
+      expect(result.data[0].target).to.equal('[A] 90 %ile');
       expect(result.data[0].datapoints).to.deep.equal([[23.1, 20], [26.1, 25]]);
     }).then(function (v) {
       return done();
