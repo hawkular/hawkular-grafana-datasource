@@ -18,6 +18,8 @@ Authentication must be set when working with a Hawkular server. Check the 'Basic
 
 Select the tenant. On Hawkular servers, use `hawkular`.
 
+Alternatively, you can select _Tenant per query_, in which case the tenant will be prompted for every queries while editing a chart in dashboards.
+
 Openshift-Metrics users must provide an authentication token.
 
 Note that if you configure both Basic Authentication and a Token, only Basic Authentication will be effective.
@@ -52,6 +54,10 @@ When using a _Singlestat_ panel, some additional options come in. The Hawkular D
 ![Example of singlestat panel](https://raw.githubusercontent.com/hawkular/hawkular-grafana-datasource/master/docs/images/single-stats-aggreg.png)
 
 > Note that because the aggregation takes place in Hawkular, the _Singlestat_ panel has nothing to aggregate. Thus in panel options, setting whatever in the _value_ field on the _Big value_ won't have any effect. However if you don't want to use the Hawkular aggregation, just set _Multiple series aggregation_ to _None_.
+
+### Per tenant queries
+
+If you selected the _Tenant per query_ option in the Datasource configuration, you will have to provide the tenant name for every queries. You can enter either a full-text name in the _Tenant_ field, or a variable that can holds several tenant names: just enter the variable name prefixed with `$`. (See section _Templating variables_ for more information on variables). Note that, due to limitations with the templating variables, the list of tenants cannot be fetched dynamically from a remote source. It has to be defined explicitly, for instance, as a list of values with variables of type _Custom_.
 
 ### Templating variables
 
