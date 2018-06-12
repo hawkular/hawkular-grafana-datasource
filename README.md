@@ -55,7 +55,7 @@ When using a _Singlestat_ panel, some additional options come in. The Hawkular D
 
 > Note that because the aggregation takes place in Hawkular, the _Singlestat_ panel has nothing to aggregate. Thus in panel options, setting whatever in the _value_ field on the _Big value_ won't have any effect. However if you don't want to use the Hawkular aggregation, just set _Multiple series aggregation_ to _None_.
 
-### Per tenant queries
+### Tenant per query
 
 If you selected the _Tenant per query_ option in the Datasource configuration, you will have to provide the tenant name for every queries. You can enter either a full-text name in the _Tenant_ field, or a variable that can holds several tenant names: just enter the variable name prefixed with `$`. (See section _Templating variables_ for more information on variables). Note that, due to limitations with the templating variables, the list of tenants cannot be fetched dynamically from a remote source. It has to be defined explicitly, for instance, as a list of values with variables of type _Custom_.
 
